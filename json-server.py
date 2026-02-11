@@ -3,12 +3,10 @@
 import json
 from http.server import HTTPServer
 
-
 # Add your imports below this line
-from views import login_user, create_user, get_all_users
-
-
+from views import login_user, create_user, get_all_users, get_user_by_id
 from nss_handler import HandleRequests, status
+from views import get_all_posts, get_posts_by_user_id
 
 
 class JSONServer(HandleRequests):
@@ -21,7 +19,18 @@ class JSONServer(HandleRequests):
         url = self.parse_url(self.path)
 
         if url["requested_resource"] == "users":
-            response_body = get_all_users()
+            if url["pk"] != 0:
+                response_body = get_user_by_id(url["pk"])
+            else:
+                response_body = get_all_users()
+            return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
+        if url["requested_resource"] == "posts":
+            if "user_id" in url["query_params"]:
+                user_id = url["query_params"]["user_id"][0]
+                response_body = get_posts_by_user_id(user_id, url["query_params"])
+            else:
+                response_body = get_all_posts()
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
         else:
