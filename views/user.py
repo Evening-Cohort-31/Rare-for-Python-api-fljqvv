@@ -2,6 +2,25 @@ import sqlite3
 import json
 from datetime import datetime
 
+def get_all_users():
+    with sqlite3.connect('./db.sqlite3') as conn:
+        conn.row_factory = sqlite3.Row
+        db_cursor = conn.cursor()
+
+        db_cursor.execute("""
+            SELECT id, first_name, last_name, email, bio, username, profile_image_url, created_on, active
+            FROM Users
+        """)
+
+        users = []
+        dataset = db_cursor.fetchall()
+
+        for row in dataset:
+            users.append(dict(row))
+
+        return json.dumps(users)
+
+
 def login_user(user):
     """Checks for the user in the database
 
