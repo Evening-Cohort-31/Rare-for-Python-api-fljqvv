@@ -95,3 +95,5 @@ VALUES
     (1, 1, 'Community Garden Breaks Record Harvest', '2026-01-22', 'https://picsum.photos/400/200', 'Volunteers at the Elm Street Community Garden celebrated their most productive season yet, donating over 3,000 pounds of fresh produce to local food banks. Organizers credit the mild fall weather and a surge in new volunteers for the bumper crop.', 1),
     (1, 1, 'City Council Approves New Bike Lane Network', '2026-02-03', 'https://picsum.photos/400/200', 'After months of public input, the city council voted 5-2 to approve a new network of protected bike lanes connecting major neighborhoods to the downtown district. Construction is set to begin this spring with an expected completion date in late summer.', 1);
 
+INSERT INTO Categories (label) VALUES ('Sports');
+INSERT INTO Categories (label) VALUES ('Tech');

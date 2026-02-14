@@ -6,7 +6,13 @@ from http.server import HTTPServer
 # Add your imports below this line
 from views import login_user, create_user, get_all_users, get_user_by_id
 from nss_handler import HandleRequests, status
-from views import get_all_posts, get_posts_by_user_id
+from views import (
+    get_all_posts,
+    get_posts_by_user_id,
+    get_all_categories,
+    get_category_by_id,
+    create_category,
+)
 
 
 class JSONServer(HandleRequests):
@@ -16,6 +22,19 @@ class JSONServer(HandleRequests):
         """Handle GET requests from a client"""
 
         response_body = ""
+        # Example: self.path = "/posts/3?user_id=1&_expand=category"
+        # Returns: {
+        #   "requested_resource": "posts",  -- e.g. "users", "posts", "categories", "tags", etc.
+        #   "pk": 3,                        -- 0 if no id in the URL
+        #   "query_params": {"user_id": ["1"], "_expand": ["category"]}  -- {} if no query string
+        # }
+        #
+        # Example: self.path = "/posts?_expand=user&_expand=category"
+        # Returns: {
+        #   "requested_resource": "posts",
+        #   "pk": 0,
+        #   "query_params": {"_expand": ["user", "category"]}
+        # }
         url = self.parse_url(self.path)
 
         if url["requested_resource"] == "users":
@@ -25,12 +44,27 @@ class JSONServer(HandleRequests):
                 response_body = get_all_users()
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
-        if url["requested_resource"] == "posts":
+        elif url["requested_resource"] == "posts":
             if "user_id" in url["query_params"]:
                 user_id = url["query_params"]["user_id"][0]
                 response_body = get_posts_by_user_id(user_id, url["query_params"])
             else:
                 response_body = get_all_posts()
+            return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
+        elif url["requested_resource"] == "categories":
+            if url["pk"] != 0:
+                response_body = get_category_by_id(url["pk"])
+            else:
+                response_body = get_all_categories()
+
+            # Check if response contains an error
+            parsed = json.loads(response_body)
+            if "error" in parsed:
+                return self.response(
+                    response_body, status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value
+                )
+
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
         else:
@@ -56,6 +90,11 @@ class JSONServer(HandleRequests):
 
         elif url["requested_resource"] == "register":
             response_body = create_user(post_body)
+            return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
+
+        # Endpoint logic for creating a new category
+        elif url["requested_resource"] == "categories":
+            response_body = create_category(post_body)
             return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
 
         else:
