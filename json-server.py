@@ -30,7 +30,7 @@ class JSONServer(HandleRequests):
                 user_id = url["query_params"]["user_id"][0]
                 response_body = get_posts_by_user_id(user_id, url["query_params"])
             else:
-                response_body = get_all_posts()
+                response_body = get_all_posts(url["query_params"])
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
         else:
