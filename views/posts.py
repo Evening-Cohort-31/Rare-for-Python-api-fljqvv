@@ -150,3 +150,22 @@ def get_posts_by_user_id(user_id, query_params):
             posts.append(post)
 
     return json.dumps(posts)
+
+def delete_post(post_id):
+    """Delete a post by id"""
+
+    with sqlite3.connect("./db.sqlite3") as conn:
+        db_cursor = conn.cursor()
+
+        db_cursor.execute(
+            """
+            DELETE FROM Posts
+            WHERE id = ?
+            """,
+            (post_id,),
+        )
+
+        if db_cursor.rowcount == 0:
+            return json.dumps({"error": "Post not found"})
+
+    return json.dumps({"message": "Post deleted successfully"})

@@ -101,3 +101,7 @@ VALUES
     (2, 1, 'Local High School Robotics Team Advances to State Championship', '2026-02-16', 'https://picsum.photos/400/202', 'The robotics team from Central High School secured first place at the regional competition last weekend, earning them a spot at the state championship in March. The team spent six months designing and building their robot, which excelled in both autonomous and driver-controlled challenges.', 1);
 INSERT INTO Categories (label) VALUES ('Sports');
 INSERT INTO Categories (label) VALUES ('Tech');
+
+INSERT INTO "Posts" ("user_id", "category_id", "title", "publication_date", "image_url", "content", "approved")
+VALUES
+    (1, 1, 'New Post I made just to delete it', '2026-02-01', 'https://picsum.photos/400/200', 'This is just a test.', 1);

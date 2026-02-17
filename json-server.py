@@ -9,6 +9,7 @@ from nss_handler import HandleRequests, status
 from views import (
     get_all_posts,
     get_posts_by_user_id,
+    delete_post,
     get_all_categories,
     get_category_by_id,
     create_category,
@@ -108,7 +109,28 @@ class JSONServer(HandleRequests):
 
     def do_DELETE(self):
         """Handle DELETE requests from a client"""
-        pass
+
+        url = self.parse_url(self.path)
+        pk = url["pk"]
+
+        if url["requested_resource"] == "posts":
+            if pk != 0:
+                successfully_deleted = delete_post(pk)
+                if successfully_deleted:
+                    return self.response(
+                        "Successfully deleted",
+                        status.HTTP_204_SUCCESS_NO_RESPONSE_BODY.value,
+                    )
+                else:
+                    return self.response(
+                        "Requested resource not found",
+                        status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                    )
+
+        else:
+            return self.response(
+                "Not found", status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value
+            )
 
 
 #
