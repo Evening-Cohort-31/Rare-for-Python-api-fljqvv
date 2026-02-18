@@ -9,6 +9,7 @@ from nss_handler import HandleRequests, status
 from views import (
     get_all_posts,
     get_posts_by_user_id,
+    create_post,
     get_all_categories,
     get_category_by_id,
     create_category,
@@ -92,7 +93,10 @@ class JSONServer(HandleRequests):
             response_body = create_user(post_body)
             return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
 
-        # Endpoint logic for creating a new category
+        elif url["requested_resource"] == "posts":
+            response_body = create_post(post_body)
+            return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
+
         elif url["requested_resource"] == "categories":
             response_body = create_category(post_body)
             return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
