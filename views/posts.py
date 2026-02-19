@@ -237,3 +237,26 @@ def update_post(post_id, post_data):
 
     except sqlite3.Error as e:
         return json.dumps({"error": str(e)})
+
+def delete_post(post_id):
+    """Delete a post by id"""
+    #Added try/except block to catch any potential database errors and return them as JSON error messages
+    try:
+        with sqlite3.connect("./db.sqlite3") as conn:
+            db_cursor = conn.cursor()
+
+            db_cursor.execute(
+                """
+                DELETE FROM Posts
+                WHERE id = ?
+                """,
+                (post_id,),
+            )
+
+            if db_cursor.rowcount == 0:
+                return json.dumps({"error": "Post not found"})
+
+        return json.dumps({"message": "Post deleted successfully"})
+    
+    except sqlite3.Error as e:
+        return json.dumps({"error": str(e)})

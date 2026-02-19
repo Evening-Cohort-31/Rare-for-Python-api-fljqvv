@@ -11,6 +11,7 @@ from views import (
     get_all_posts,
     get_posts_by_user_id,
     get_post_by_id,
+    delete_post,
     get_all_categories,
     get_category_by_id,
     create_category,
@@ -182,7 +183,38 @@ class JSONServer(HandleRequests):
 
     def do_DELETE(self):  # pylint: disable=invalid-name
         """Handle DELETE requests from a client"""
-        pass
+
+        url = self.parse_url(self.path)
+        pk = url["pk"]
+
+        if url["requested_resource"] == "posts":
+            if pk != 0:
+                # Parse the response from delete_post to check if it contains an error message about not finding the post to delete
+                delete_body = delete_post(pk)
+                parsed = json.loads(delete_body)
+
+                    
+                if "error" in parsed:
+                    return self.response(
+                        json.dumps(parsed),
+                        status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                    )
+                else:
+                    return self.response(
+                        "Successfully deleted",
+                        status.HTTP_204_SUCCESS_NO_RESPONSE_BODY.value,
+                    )
+                  # Check if the post has an Id in the URL, if not return an error message
+            else:
+                return self.response(
+                    "A post id is required.",
+                    status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                )
+
+        else:
+            return self.response(
+                "Not found", status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value
+            )
 
 
 #
