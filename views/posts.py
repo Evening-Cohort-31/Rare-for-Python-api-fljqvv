@@ -159,16 +159,16 @@ def _add_tags_to_post(db_cursor, post_id, tag_ids):
             (post_id, tag_id)
         )
 
-def create_post(post, user_id):
+def create_post(post):
     with sqlite3.connect("./db.sqlite3") as conn:
         conn.row_factory = sqlite3.Row
         db_cursor = conn.cursor()
 
         db_cursor.execute("""
             INSERT INTO Posts (user_id, category_id, title, publication_date, image_url, content, approved)
-            VALUES (?, ?, ?, ?, ?, ?, 1) 
+            VALUES (?, ?, ?, ?, ?, ?, 1)
         """, (
-            user_id,
+            post["user_id"],
             post["category_id"],
             post["title"],
             datetime.now().isoformat(),
