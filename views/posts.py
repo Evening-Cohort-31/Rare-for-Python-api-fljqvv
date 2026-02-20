@@ -2,6 +2,7 @@
 
 import sqlite3
 import json
+from datetime import datetime
 
 from .posts_helpers import build_post_query, build_post_object
 
@@ -197,6 +198,40 @@ def get_posts_by_user_id(user_id, query_params):
             posts.append(post)
 
     return json.dumps(posts)
+
+def _add_tags_to_post(db_cursor, post_id, tag_ids):
+    for tag_id in tag_ids:
+        db_cursor.execute(
+            "INSERT INTO PostTags (post_id, tag_id) VALUES (?, ?)",
+            (post_id, tag_id)
+        )
+
+def create_post(post):
+    with sqlite3.connect("./db.sqlite3") as conn:
+        conn.row_factory = sqlite3.Row
+        db_cursor = conn.cursor()
+
+        db_cursor.execute("""
+            INSERT INTO Posts (user_id, category_id, title, publication_date, image_url, content, approved)
+            VALUES (?, ?, ?, ?, ?, ?, 1)
+        """, (
+            post["user_id"],
+            post["category_id"],
+            post["title"],
+            datetime.now().isoformat(),
+            post["image_url"],
+            post["content"]
+        ))
+
+
+        post_id = db_cursor.lastrowid
+
+
+        _add_tags_to_post(db_cursor, post_id, post.get("tag_ids", []))
+
+
+        return json.dumps({"id": post_id})
+
 
 
 def update_post(post_id, post_data):
