@@ -2,6 +2,7 @@
 
 import json
 from http.server import HTTPServer
+from urllib.parse import urlparse
 
 # Add your imports below this line
 from views import login_user, create_user, get_all_users, get_user_by_id
@@ -10,16 +11,19 @@ from views import (
     get_all_posts,
     get_posts_by_user_id,
     create_post,
+    get_post_by_id,
+    delete_post,
     get_all_categories,
     get_category_by_id,
     create_category,
+    update_post,
 )
 
 
 class JSONServer(HandleRequests):
     """Server class to handle incoming HTTP requests for Rare"""
 
-    def do_GET(self):
+    def do_GET(self):  # pylint: disable=invalid-name
         """Handle GET requests from a client"""
 
         response_body = ""
@@ -46,16 +50,31 @@ class JSONServer(HandleRequests):
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
         elif url["requested_resource"] == "posts":
+
+            # Endpoint: GET /posts?user_id=<id>&_expand=<resource>
+            # Resources that can be expanded: category, user
             if "user_id" in url["query_params"]:
                 user_id = url["query_params"]["user_id"][0]
                 response_body = get_posts_by_user_id(user_id, url["query_params"])
+
+            # Endpoint: GET /posts/<id>?_expand=<resource>
+            # Resources that can be expanded: category, user
+            elif url["pk"] != 0:
+                response_body = get_post_by_id(url["pk"], url["query_params"])
+
+            # Endpoint: GET /posts?_expand=<resource>
+            # Resources that can be expanded: category
+            # TODO: add user expansion for this endpoint
             else:
                 response_body = get_all_posts(url["query_params"])
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
         elif url["requested_resource"] == "categories":
+
+            # Endpoint: GET /categories/<id>
             if url["pk"] != 0:
                 response_body = get_category_by_id(url["pk"])
+            # Endpoint: GET /categories
             else:
                 response_body = get_all_categories()
 
@@ -73,7 +92,7 @@ class JSONServer(HandleRequests):
                 "", status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value
             )
 
-    def do_POST(self):
+    def do_POST(self):  # pylint: disable=invalid-name
         """Handle POST requests from a client"""
 
         response_body = ""
@@ -106,13 +125,100 @@ class JSONServer(HandleRequests):
                 "", status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value
             )
 
-    def do_PUT(self):
+    def do_PUT(self):  # pylint: disable=invalid-name
         """Handle PUT requests from a client"""
-        pass
+        url = self.parse_url(self.path)
 
-    def do_DELETE(self):
+        # Get content length to read the body
+        content_length = int(self.headers.get("Content-Length", 0))
+        put_body = self.rfile.read(content_length)
+        # Parse the JSON body to a Python dictionary
+        put_body = json.loads(put_body)
+
+        # Endpoint: PUT /posts/<id>
+        if url["requested_resource"] == "posts" and url["pk"] != 0:
+            required_fields = [
+                "user_id",
+                "category_id",
+                "title",
+                "publication_date",
+                "image_url",
+                "content",
+                "approved",
+            ]
+            # Collect any fields from required_fields that are absent in the request body
+            # Uses List Comprehension to create a list of missing fields
+            missing_fields = [f for f in required_fields if f not in put_body]
+
+            if missing_fields:
+                return self.response(
+                    json.dumps(
+                        {
+                            "error": f"Missing required fields: {', '.join(missing_fields)}"
+                        }
+                    ),
+                    status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+                )
+
+            # Validate image_url is a properly formatted URL (must be http or https)
+            parsed_url = urlparse(put_body["image_url"])
+            if not (parsed_url.scheme in ("http", "https") and parsed_url.netloc):
+                return self.response(
+                    json.dumps({"error": "image_url must be a valid http or https URL."}),
+                    status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+                )
+
+            response_body = update_post(url["pk"], put_body)
+            parsed = json.loads(response_body)
+
+            # Check if response contains an error from not finding the post to update
+            if "error" in parsed:
+                return self.response(
+                    response_body,
+                    status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                )
+
+            return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
+        else:
+            return self.response(
+                "", status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value
+            )
+
+    def do_DELETE(self):  # pylint: disable=invalid-name
         """Handle DELETE requests from a client"""
-        pass
+
+        url = self.parse_url(self.path)
+        pk = url["pk"]
+
+        if url["requested_resource"] == "posts":
+            if pk != 0:
+                # Parse the response from delete_post to check if it contains an error message about not finding the post to delete
+                delete_body = delete_post(pk)
+                parsed = json.loads(delete_body)
+
+                    
+                if "error" in parsed:
+                    return self.response(
+                        json.dumps(parsed),
+                        status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                    )
+                else:
+                    return self.response(
+                        "Successfully deleted",
+                        status.HTTP_204_SUCCESS_NO_RESPONSE_BODY.value,
+                    )
+                  # Check if the post has an Id in the URL, if not return an error message
+            else:
+                return self.response(
+                    "A post id is required.",
+                    status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                )
+
+        else:
+            return self.response(
+                "Not found", status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value
+            )
 
 
 #
