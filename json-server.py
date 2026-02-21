@@ -15,6 +15,7 @@ from views import (
     get_category_by_id,
     create_category,
     update_post,
+    get_comments_by_post_id,
 )
 
 
@@ -84,6 +85,24 @@ class JSONServer(HandleRequests):
                 )
 
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
+        elif url["requested_resource"] == "comments":
+
+            # Endpoint: GET /comments?post_id=<id>
+            if "post_id" in url["query_params"]:
+                post_id = url["query_params"]["post_id"][0]
+                response_body = get_comments_by_post_id(post_id, url["query_params"])
+
+                return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
+            # Placeholder for future comment endpoints (get all, get by id, etc.)
+            else:
+                return self.response(
+                    json.dumps(
+                        {"error": "Comments endpoint not implemented for this request."}
+                    ),
+                    status.HTTP_400_CLIENT_ERROR_BAD_REQUEST.value,
+                )
 
         else:
             return self.response(
@@ -159,7 +178,9 @@ class JSONServer(HandleRequests):
             parsed_url = urlparse(put_body["image_url"])
             if not (parsed_url.scheme in ("http", "https") and parsed_url.netloc):
                 return self.response(
-                    json.dumps({"error": "image_url must be a valid http or https URL."}),
+                    json.dumps(
+                        {"error": "image_url must be a valid http or https URL."}
+                    ),
                     status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
                 )
 

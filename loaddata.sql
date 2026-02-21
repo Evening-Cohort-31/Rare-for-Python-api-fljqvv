@@ -101,3 +101,32 @@ VALUES
     (2, 1, 'Local High School Robotics Team Advances to State Championship', '2026-02-16', 'https://picsum.photos/400/202', 'The robotics team from Central High School secured first place at the regional competition last weekend, earning them a spot at the state championship in March. The team spent six months designing and building their robot, which excelled in both autonomous and driver-controlled challenges.', 1);
 INSERT INTO Categories (label) VALUES ('Sports');
 INSERT INTO Categories (label) VALUES ('Tech');
+
+-- Show All Posts
+SELECT * FROM Posts;
+
+-- Delete and recreate Comments table to add publication_date column with default value
+DROP TABLE IF EXISTS "Comments";
+
+CREATE TABLE "Comments" (
+  "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+  "post_id" INTEGER,
+  "author_id" INTEGER,
+  "content" varchar,
+  "publication_date" datetime DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(`post_id`) REFERENCES `Posts`(`id`),
+  FOREIGN KEY(`author_id`) REFERENCES `Users`(`id`)
+);
+
+-- Sample comments for Post_Id 1
+INSERT INTO Comments (post_id, author_id, content) VALUES (1, 2, 'Great post, really enjoyed reading this!');
+
+-- Sample comments for Post_Id 2
+INSERT INTO Comments (post_id, author_id, content) VALUES (2, 1, 'This is really helpful, thanks for sharing.');
+INSERT INTO Comments (post_id, author_id, content) VALUES (2, 3, 'Interesting perspective, I had not thought of it that way.');
+
+-- Sample comments for Post_Id 3
+INSERT INTO Comments (post_id, author_id, content) VALUES (3, 1, 'Totally agree with everything said here.');
+INSERT INTO Comments (post_id, author_id, content) VALUES (3, 2, 'Can you elaborate more on this topic?');
+INSERT INTO Comments (post_id, author_id, content) VALUES (3, 4, 'I had a similar experience, great write-up.');
+INSERT INTO Comments (post_id, author_id, content) VALUES (3, 3, 'Looking forward to more posts like this!');
