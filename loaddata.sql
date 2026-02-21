@@ -102,6 +102,7 @@ VALUES
 INSERT INTO Categories (label) VALUES ('Sports');
 INSERT INTO Categories (label) VALUES ('Tech');
 
+-- Sample post to be deleted
 INSERT INTO "Posts" ("user_id", "category_id", "title", "publication_date", "image_url", "content", "approved")
 VALUES
     (1, 1, 'New Post I made just to delete it', '2026-02-01', 'https://picsum.photos/400/200', 'This is just a test.', 1);
