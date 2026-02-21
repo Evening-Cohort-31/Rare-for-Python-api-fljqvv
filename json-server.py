@@ -16,6 +16,7 @@ from views import (
     create_category,
     update_post,
     get_comments_by_post_id,
+    create_comment,
 )
 
 
@@ -132,6 +133,11 @@ class JSONServer(HandleRequests):
         # Endpoint: POST /categories
         elif url["requested_resource"] == "categories":
             response_body = create_category(post_body)
+            return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
+
+        # Endpoint: POST /comments
+        elif url["requested_resource"] == "comments":
+            response_body = create_comment(post_body)
             return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
 
         else:
