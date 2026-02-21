@@ -113,15 +113,8 @@ SELECT * FROM Posts;
 -- Delete and recreate Comments table to add publication_date column with default value
 DROP TABLE IF EXISTS "Comments";
 
-CREATE TABLE "Comments" (
-  "id" INTEGER PRIMARY KEY AUTOINCREMENT,
-  "post_id" INTEGER,
-  "author_id" INTEGER,
-  "content" varchar,
-  "publication_date" datetime DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY(`post_id`) REFERENCES `Posts`(`id`),
-  FOREIGN KEY(`author_id`) REFERENCES `Users`(`id`)
-);
+-- Recreate Comments table with publication_date column
+ALTER TABLE Comments ADD COLUMN publication_date date DEFAULT (date('now'));
 
 -- Sample comments for Post_Id 1
 INSERT INTO Comments (post_id, author_id, content) VALUES (1, 2, 'Great post, really enjoyed reading this!');
