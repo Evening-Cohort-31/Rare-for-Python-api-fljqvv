@@ -224,7 +224,6 @@ class JSONServer(HandleRequests):
                 delete_body = delete_post(pk)
                 parsed = json.loads(delete_body)
 
-                    
                 if "error" in parsed:
                     return self.response(
                         json.dumps(parsed),
@@ -235,7 +234,7 @@ class JSONServer(HandleRequests):
                         "Successfully deleted",
                         status.HTTP_204_SUCCESS_NO_RESPONSE_BODY.value,
                     )
-                  # Check if the post has an Id in the URL, if not return an error message
+                # Check if the post has an Id in the URL, if not return an error message
             else:
                 return self.response(
                     "A post id is required.",

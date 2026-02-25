@@ -128,3 +128,17 @@ INSERT INTO Comments (post_id, author_id, content) VALUES (3, 1, 'Totally agree 
 INSERT INTO Comments (post_id, author_id, content) VALUES (3, 2, 'Can you elaborate more on this topic?');
 INSERT INTO Comments (post_id, author_id, content) VALUES (3, 4, 'I had a similar experience, great write-up.');
 INSERT INTO Comments (post_id, author_id, content) VALUES (3, 3, 'Looking forward to more posts like this!');
+
+-- Add is_staff column to Users table, defaulting all existing users to false (0)
+ALTER TABLE "Users" ADD COLUMN "is_staff" bit NOT NULL DEFAULT 0;
+
+-- Set user id 1 as a staff member
+UPDATE "Users" SET "is_staff" = 1 WHERE "id" = 1;
+
+-- New non-staff user
+INSERT INTO "Users" ("first_name", "last_name", "email", "bio", "username", "password", "profile_image_url", "created_on", "active", "is_staff")
+VALUES ('Jason', 'Norman', 'jason.norman@example.com', 'Avid golfer and occasional blogger.', 'ZoomingInACar', 'password123', 'https://picsum.photos/200', '2026-02-20', 1, 0);
+
+-- New staff user
+INSERT INTO "Users" ("first_name", "last_name", "email", "bio", "username", "password", "profile_image_url", "created_on", "active", "is_staff")
+VALUES ('Lea', 'Edwards', 'lea.edwards@example.com', 'Site administrator, content moderator, and Soap officiant.', 'HealthyHabitsGirl', 'password123', 'https://picsum.photos/200', '2026-02-20', 1, 1);
