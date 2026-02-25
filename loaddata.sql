@@ -129,6 +129,10 @@ INSERT INTO Comments (post_id, author_id, content) VALUES (3, 2, 'Can you elabor
 INSERT INTO Comments (post_id, author_id, content) VALUES (3, 4, 'I had a similar experience, great write-up.');
 INSERT INTO Comments (post_id, author_id, content) VALUES (3, 3, 'Looking forward to more posts like this!');
 
+INSERT INTO Tags (label) VALUES ('Python');
+INSERT INTO Tags (label) VALUES ('SQL');
+INSERT INTO Tags (label) VALUES ('Data Science');
+
 -- Add is_staff column to Users table, defaulting all existing users to false (0)
 ALTER TABLE "Users" ADD COLUMN "is_staff" bit NOT NULL DEFAULT 0;
 

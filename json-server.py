@@ -19,6 +19,9 @@ from views import (
     update_post,
     get_comments_by_post_id,
     create_comment,
+    get_all_tags,
+    get_tag_by_id,
+    create_tag
 )
 
 
@@ -106,6 +109,22 @@ class JSONServer(HandleRequests):
                     ),
                     status.HTTP_400_CLIENT_ERROR_BAD_REQUEST.value,
                 )
+        elif url["requested_resource"] == "tags":
+
+            #Endpoint: GET /tags/<id>
+            #Placeholder for future tag endpoint (get by id)
+            if url["pk"] != 0:
+                response_body = get_tag_by_id(url["pk"])
+            # Endpoint: GET /tags
+            else:
+                response_body = get_all_tags()
+            #Check if response contains an error
+            parsed = json.loads(response_body)
+            if "error" in parsed:
+                return self.response(
+                    response_body, status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value
+                )
+            return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
         else:
             return self.response(
@@ -143,6 +162,11 @@ class JSONServer(HandleRequests):
         # Endpoint: POST /comments
         elif url["requested_resource"] == "comments":
             response_body = create_comment(post_body)
+            return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
+        
+        # Endpoint: POST /tags
+        elif url["requested_resource"] == "tags":
+            response_body = create_tag(post_body)
             return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
 
         else:
