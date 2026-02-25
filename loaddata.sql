@@ -102,6 +102,29 @@ VALUES
 INSERT INTO Categories (label) VALUES ('Sports');
 INSERT INTO Categories (label) VALUES ('Tech');
 
+-- Sample post to be deleted
 INSERT INTO "Posts" ("user_id", "category_id", "title", "publication_date", "image_url", "content", "approved")
 VALUES
     (1, 1, 'New Post I made just to delete it', '2026-02-01', 'https://picsum.photos/400/200', 'This is just a test.', 1);
+
+-- Show All Posts
+SELECT * FROM Posts;
+
+-- Delete and recreate Comments table to add publication_date column with default value
+DROP TABLE IF EXISTS "Comments";
+
+-- Recreate Comments table with publication_date column
+ALTER TABLE Comments ADD COLUMN publication_date date DEFAULT (date('now'));
+
+-- Sample comments for Post_Id 1
+INSERT INTO Comments (post_id, author_id, content) VALUES (1, 2, 'Great post, really enjoyed reading this!');
+
+-- Sample comments for Post_Id 2
+INSERT INTO Comments (post_id, author_id, content) VALUES (2, 1, 'This is really helpful, thanks for sharing.');
+INSERT INTO Comments (post_id, author_id, content) VALUES (2, 3, 'Interesting perspective, I had not thought of it that way.');
+
+-- Sample comments for Post_Id 3
+INSERT INTO Comments (post_id, author_id, content) VALUES (3, 1, 'Totally agree with everything said here.');
+INSERT INTO Comments (post_id, author_id, content) VALUES (3, 2, 'Can you elaborate more on this topic?');
+INSERT INTO Comments (post_id, author_id, content) VALUES (3, 4, 'I had a similar experience, great write-up.');
+INSERT INTO Comments (post_id, author_id, content) VALUES (3, 3, 'Looking forward to more posts like this!');
