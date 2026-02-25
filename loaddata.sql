@@ -128,3 +128,7 @@ INSERT INTO Comments (post_id, author_id, content) VALUES (3, 1, 'Totally agree 
 INSERT INTO Comments (post_id, author_id, content) VALUES (3, 2, 'Can you elaborate more on this topic?');
 INSERT INTO Comments (post_id, author_id, content) VALUES (3, 4, 'I had a similar experience, great write-up.');
 INSERT INTO Comments (post_id, author_id, content) VALUES (3, 3, 'Looking forward to more posts like this!');
+
+INSERT INTO Tags (label) VALUES ('Python');
+INSERT INTO Tags (label) VALUES ('SQL');
+INSERT INTO Tags (label) VALUES ('Data Science');
