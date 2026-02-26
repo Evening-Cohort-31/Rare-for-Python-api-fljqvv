@@ -17,6 +17,7 @@ from views import (
     get_category_by_id,
     create_category,
     update_post,
+    get_comments_by_post_id,  # Ticket #21 - Import the function that fetches comments for a post
 )
 
 
@@ -86,6 +87,24 @@ class JSONServer(HandleRequests):
                 )
 
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
+        # Ticket #21 - Handle GET requests for comments on a specific post
+        elif url["requested_resource"] == "comments":
+
+            # Endpoint: GET /comments?post_id=<id>
+            # The client sends post_id as a query param, e.g. /comments?post_id=1&_expand=user
+            if "post_id" in url["query_params"]:
+                # Extract the post_id value from the query params list
+                post_id = url["query_params"]["post_id"][0]
+                # Pass both post_id and full query_params so the function can handle _expand=user
+                response_body = get_comments_by_post_id(post_id, url["query_params"])
+                return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
+            # If no post_id was provided, return a 400 bad request error
+            return self.response(
+                json.dumps({"error": "post_id query parameter is required"}),
+                status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+            )
 
         else:
             return self.response(
@@ -164,7 +183,9 @@ class JSONServer(HandleRequests):
             parsed_url = urlparse(put_body["image_url"])
             if not (parsed_url.scheme in ("http", "https") and parsed_url.netloc):
                 return self.response(
-                    json.dumps({"error": "image_url must be a valid http or https URL."}),
+                    json.dumps(
+                        {"error": "image_url must be a valid http or https URL."}
+                    ),
                     status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
                 )
 
@@ -197,7 +218,6 @@ class JSONServer(HandleRequests):
                 delete_body = delete_post(pk)
                 parsed = json.loads(delete_body)
 
-                    
                 if "error" in parsed:
                     return self.response(
                         json.dumps(parsed),
@@ -208,7 +228,7 @@ class JSONServer(HandleRequests):
                         "Successfully deleted",
                         status.HTTP_204_SUCCESS_NO_RESPONSE_BODY.value,
                     )
-                  # Check if the post has an Id in the URL, if not return an error message
+                # Check if the post has an Id in the URL, if not return an error message
             else:
                 return self.response(
                     "A post id is required.",
