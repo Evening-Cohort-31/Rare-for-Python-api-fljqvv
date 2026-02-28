@@ -5,9 +5,9 @@ from http.server import HTTPServer
 from urllib.parse import urlparse
 
 # Add your imports below this line
-from views import login_user, create_user, get_all_users, get_user_by_id
+
 from nss_handler import HandleRequests, status
-from views import (
+from views import (login_user, create_user, get_all_users, get_user_by_id,
     get_all_posts,
     get_posts_by_user_id,
     create_post,
@@ -18,6 +18,7 @@ from views import (
     create_category,
     update_post,
     get_comments_by_post_id,  # Ticket #21 - Import the function that fetches comments for a post
+    get_comment_by_id,
     create_comment,
     get_all_tags,
     get_tag_by_id,
@@ -102,6 +103,9 @@ class JSONServer(HandleRequests):
                 post_id = url["query_params"]["post_id"][0]
                 # Pass both post_id and full query_params so the function can handle _expand=user
                 response_body = get_comments_by_post_id(post_id, url["query_params"])
+                return self.response(response_body, status.HTTP_200_SUCCESS.value)
+            elif url["pk"] != 0:
+                response_body = get_comment_by_id(url["pk"], url["query_params"])
                 return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
             # If no post_id was provided, return a 400 bad request error
