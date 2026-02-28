@@ -19,3 +19,27 @@ def serialize_user(row):
         "active": bool(row["active"]),
         "is_staff": bool(row["is_staff"]),
     }
+
+
+def users_query_builder(active=None):
+    """Helper function to build the SQL query for getting users based on the active parameter"""
+    base_query = """
+        SELECT 
+            id, 
+            first_name, 
+            last_name, 
+            email, 
+            bio, 
+            username,
+            password, 
+            profile_image_url, 
+            created_on, 
+            active, 
+            is_staff
+        FROM Users
+    """
+
+    if active is not None:
+        return base_query + " WHERE active = ?"
+    else:
+        return base_query
