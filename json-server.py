@@ -16,7 +16,7 @@ from views import (
     get_category_by_id,
     create_category,
     update_post,
-    get_comments_by_post_id,
+    get_comments_by_post_id,  # Ticket #21 - Import the function that fetches comments for a post
     create_comment,
     get_all_tags,
     get_tag_by_id,
@@ -25,7 +25,7 @@ from views import (
     create_user,
     get_all_users,
     get_user_by_id,
-    update_user,
+    update_user,,
 )
 
 
@@ -109,28 +109,27 @@ class JSONServer(HandleRequests):
 
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
+        # Ticket #21 - Handle GET requests for comments on a specific post
         elif url["requested_resource"] == "comments":
 
             # Endpoint: GET /comments?post_id=<id>
+            # The client sends post_id as a query param, e.g. /comments?post_id=1&_expand=user
             if "post_id" in url["query_params"]:
+                # Extract the post_id value from the query params list
                 post_id = url["query_params"]["post_id"][0]
+                # Pass both post_id and full query_params so the function can handle _expand=user
                 response_body = get_comments_by_post_id(post_id, url["query_params"])
-
                 return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
-            # Placeholder for future comment endpoints (get all, get by id, etc.)
-            else:
-                return self.response(
-                    json.dumps(
-                        {"error": "Comments endpoint not implemented for this request."}
-                    ),
-                    status.HTTP_400_CLIENT_ERROR_BAD_REQUEST.value,
-                )
-
+            # If no post_id was provided, return a 400 bad request error
+            return self.response(
+                json.dumps({"error": "post_id query parameter is required"}),
+                status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+            )
         elif url["requested_resource"] == "tags":
 
-            # Endpoint: GET /tags/<id>
-            # Placeholder for future tag endpoint (get by id)
+            #  Endpoint: GET /tags/<id>
+            #  Placeholder for future tag endpoint (get by id)
             if url["pk"] != 0:
                 response_body = get_tag_by_id(url["pk"])
 
@@ -138,7 +137,7 @@ class JSONServer(HandleRequests):
             else:
                 response_body = get_all_tags()
 
-            # Check if response contains an error
+            #  Check if response contains an error
             parsed = json.loads(response_body)
             if "error" in parsed:
                 return self.response(
@@ -187,6 +186,7 @@ class JSONServer(HandleRequests):
         elif url["requested_resource"] == "comments":
             response_body = create_comment(post_body)
             return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
+
 
         # Endpoint: POST /tags
         elif url["requested_resource"] == "tags":

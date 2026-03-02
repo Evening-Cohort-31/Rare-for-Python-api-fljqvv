@@ -199,39 +199,39 @@ def get_posts_by_user_id(user_id, query_params):
 
     return json.dumps(posts)
 
+
 def _add_tags_to_post(db_cursor, post_id, tag_ids):
     for tag_id in tag_ids:
         db_cursor.execute(
-            "INSERT INTO PostTags (post_id, tag_id) VALUES (?, ?)",
-            (post_id, tag_id)
+            "INSERT INTO PostTags (post_id, tag_id) VALUES (?, ?)", (post_id, tag_id)
         )
+
 
 def create_post(post):
     with sqlite3.connect("./db.sqlite3") as conn:
         conn.row_factory = sqlite3.Row
         db_cursor = conn.cursor()
 
-        db_cursor.execute("""
+        db_cursor.execute(
+            """
             INSERT INTO Posts (user_id, category_id, title, publication_date, image_url, content, approved)
             VALUES (?, ?, ?, ?, ?, ?, 1)
-        """, (
-            post["user_id"],
-            post["category_id"],
-            post["title"],
-            datetime.now().isoformat(),
-            post["image_url"],
-            post["content"]
-        ))
-
+        """,
+            (
+                post["user_id"],
+                post["category_id"],
+                post["title"],
+                datetime.now().isoformat(),
+                post["image_url"],
+                post["content"],
+            ),
+        )
 
         post_id = db_cursor.lastrowid
 
-
         _add_tags_to_post(db_cursor, post_id, post.get("tag_ids", []))
 
-
         return json.dumps({"id": post_id})
-
 
 
 def update_post(post_id, post_data):
@@ -273,9 +273,10 @@ def update_post(post_id, post_data):
     except sqlite3.Error as e:
         return json.dumps({"error": str(e)})
 
+
 def delete_post(post_id):
     """Delete a post by id"""
-    #Added try/except block to catch any potential database errors and return them as JSON error messages
+    # Added try/except block to catch any potential database errors and return them as JSON error messages
     try:
         with sqlite3.connect("./db.sqlite3") as conn:
             db_cursor = conn.cursor()
@@ -292,6 +293,6 @@ def delete_post(post_id):
                 return json.dumps({"error": "Post not found"})
 
         return json.dumps({"message": "Post deleted successfully"})
-    
+
     except sqlite3.Error as e:
         return json.dumps({"error": str(e)})
