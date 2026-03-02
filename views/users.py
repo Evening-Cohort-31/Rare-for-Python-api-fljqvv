@@ -3,32 +3,21 @@
 import sqlite3
 import json
 from datetime import datetime
-from .user_helpers import serialize_user
+from .user_helpers import serialize_user, users_query_builder
 
 
-def get_all_users():
+def get_all_users(active=None):
     """Gets all users from the database and returns them as a JSON string"""
     with sqlite3.connect("./db.sqlite3") as conn:
         conn.row_factory = sqlite3.Row
         db_cursor = conn.cursor()
 
-        db_cursor.execute(
-            """
-            SELECT 
-                id, 
-                first_name, 
-                last_name, 
-                email, 
-                bio, 
-                username,
-                password, 
-                profile_image_url, 
-                created_on, 
-                active, 
-                is_staff
-            FROM Users
-        """
-        )
+        query = users_query_builder(active)
+
+        if active is not None:
+            db_cursor.execute(query, (1 if active else 0,))
+        else:
+            db_cursor.execute(query)
 
         users = []
         user_query_data = db_cursor.fetchall()
@@ -142,3 +131,50 @@ def create_user(user):
         id = db_cursor.lastrowid
 
         return json.dumps({"token": id, "valid": True})
+
+
+def update_user(user_id, updated_user):
+    """Updates a user's information in the database
+
+    Args:
+        user_id (int): The id of the user to update
+        updated_user (dict): A dictionary containing the updated user information
+
+    Returns:
+        json string: Contains the updated user information
+    """
+    with sqlite3.connect("./db.sqlite3") as conn:
+        conn.row_factory = sqlite3.Row
+        db_cursor = conn.cursor()
+
+        db_cursor.execute(
+            """
+            UPDATE Users
+            SET 
+                first_name = ?, 
+                last_name = ?, 
+                username = ?, 
+                email = ?, 
+                password = ?, 
+                bio = ?, 
+                profile_image_url = ?, 
+                active = ?, 
+                is_staff = ?
+            WHERE id = ?
+            """,
+            (
+                updated_user["first_name"],
+                updated_user["last_name"],
+                updated_user["username"],
+                updated_user["email"],
+                updated_user["password"],
+                updated_user["bio"],
+                updated_user.get("profile_image_url"),
+                1 if updated_user.get("active", True) else 0,
+                1 if updated_user.get("is_staff", False) else 0,
+                user_id,
+            ),
+        )
+
+        db_cursor.execute("SELECT * FROM Users WHERE id = ?", (user_id,))
+        return json.dumps(serialize_user(db_cursor.fetchone()))
