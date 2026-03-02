@@ -7,7 +7,7 @@ from helpers import is_valid_url
 # Add your imports below this line
 
 from nss_handler import HandleRequests, status
-from views import (login_user, create_user, get_all_users, get_user_by_id,
+from views import (
     get_all_posts,
     get_posts_by_user_id,
     create_post,
