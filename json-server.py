@@ -25,7 +25,7 @@ from views import (
     create_user,
     get_all_users,
     get_user_by_id,
-    update_user,,
+    update_user,
 )
 
 
@@ -89,6 +89,7 @@ class JSONServer(HandleRequests):
             # TODO: add user expansion for this endpoint
             else:
                 response_body = get_all_posts(url["query_params"])
+
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
         elif url["requested_resource"] == "categories":
@@ -96,6 +97,7 @@ class JSONServer(HandleRequests):
             # Endpoint: GET /categories/<id>
             if url["pk"] != 0:
                 response_body = get_category_by_id(url["pk"])
+
             # Endpoint: GET /categories
             else:
                 response_body = get_all_categories()
@@ -122,10 +124,12 @@ class JSONServer(HandleRequests):
                 return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
             # If no post_id was provided, return a 400 bad request error
-            return self.response(
-                json.dumps({"error": "post_id query parameter is required"}),
-                status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
-            )
+            else:
+                return self.response(
+                    json.dumps({"error": "post_id query parameter is required"}),
+                    status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+                )
+
         elif url["requested_resource"] == "tags":
 
             #  Endpoint: GET /tags/<id>
@@ -186,7 +190,6 @@ class JSONServer(HandleRequests):
         elif url["requested_resource"] == "comments":
             response_body = create_comment(post_body)
             return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
-
 
         # Endpoint: POST /tags
         elif url["requested_resource"] == "tags":
@@ -283,7 +286,7 @@ class JSONServer(HandleRequests):
 
         if url["requested_resource"] == "posts":
             if pk != 0:
-                # Parse the response from delete_post to check if it contains an error message about not finding the post to delete
+                # Parse the response from delete_post to check if it contains an error message
                 delete_body = delete_post(pk)
                 parsed = json.loads(delete_body)
 
