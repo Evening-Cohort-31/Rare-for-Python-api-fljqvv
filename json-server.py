@@ -23,6 +23,7 @@ from views import (login_user, create_user, get_all_users, get_user_by_id,
     get_all_tags,
     get_tag_by_id,
     create_tag,
+    update_comment,
 )
 
 
@@ -234,11 +235,25 @@ class JSONServer(HandleRequests):
                 )
 
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
+        
+        # Endpoint: PUT /comments/<id>
+        elif url["requested_resource"] == "comments" and url["pk"] != 0:
+            response_body = update_comment(url["pk"], put_body)
+            parsed = json.loads(response_body)
 
+            # Check if response contains an error from not finding the comment to update
+            if "error" in parsed:
+                return self.response(
+                    response_body,
+                    status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                )
+            return self.response(response_body, status.HTTP_200_SUCCESS.value)
+        
         else:
             return self.response(
                 "", status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value
             )
+
 
     def do_DELETE(self):  # pylint: disable=invalid-name
         """Handle DELETE requests from a client"""

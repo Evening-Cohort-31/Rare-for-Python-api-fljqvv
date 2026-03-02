@@ -109,3 +109,35 @@ def get_comment_by_id(comment_id, query_params):
 
     return json.dumps(comment)
 
+def update_comment(comment_id, updated_data):
+    """Update an existing comment in the database"""
+
+    try:
+        with sqlite3.connect("./db.sqlite3") as conn:
+            db_cursor = conn.cursor()
+
+            # Update the comment in the Comments table
+            db_cursor.execute(
+                """
+                UPDATE Comments
+                SET content = ?, subject = ?
+                WHERE id = ?
+                """,
+                (
+                    updated_data["content"],
+                    updated_data["subject"],
+                    comment_id,
+                ),
+            )
+
+        if db_cursor.rowcount == 0:
+                   
+            return json.dumps({"error": "Comment not found."})
+
+        return json.dumps({"message": "Comment updated successfully."})
+
+    except sqlite3.Error as e:      
+        return json.dumps({"error": str(e)})
+
+
+   
