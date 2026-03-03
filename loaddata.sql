@@ -148,3 +148,7 @@ VALUES ('Jason', 'Norman', 'jason.norman@example.com', 'Avid golfer and occasion
 -- New staff user
 INSERT INTO "Users" ("first_name", "last_name", "email", "bio", "username", "password", "profile_image_url", "created_on", "active", "is_staff")
 VALUES ('Lea', 'Edwards', 'lea.edwards@example.com', 'Site administrator, content moderator, and Soap officiant.', 'HealthyHabitsGirl', 'password123', 'https://picsum.photos/200', '2026-02-20', 1, 1);
+
+ALTER TABLE "Comments" ADD COLUMN "subject" varchar;
+
+ALTER TABLE Comments RENAME COLUMN publication_date TO created_on;

@@ -5,6 +5,7 @@ from http.server import HTTPServer
 from helpers import is_valid_url
 
 # Add your imports below this line
+
 from nss_handler import HandleRequests, status
 from views import (
     get_all_posts,
@@ -17,6 +18,7 @@ from views import (
     create_category,
     update_post,
     get_comments_by_post_id,  # Ticket #21 - Import the function that fetches comments for a post
+    get_comment_by_id,
     create_comment,
     get_all_tags,
     get_tag_by_id,
@@ -26,6 +28,7 @@ from views import (
     get_all_users,
     get_user_by_id,
     update_user,
+    update_comment,
 )
 
 
@@ -121,6 +124,9 @@ class JSONServer(HandleRequests):
                 post_id = url["query_params"]["post_id"][0]
                 # Pass both post_id and full query_params so the function can handle _expand=user
                 response_body = get_comments_by_post_id(post_id, url["query_params"])
+                return self.response(response_body, status.HTTP_200_SUCCESS.value)
+            elif url["pk"] != 0:
+                response_body = get_comment_by_id(url["pk"], url["query_params"])
                 return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
             # If no post_id was provided, return a 400 bad request error
@@ -245,7 +251,7 @@ class JSONServer(HandleRequests):
                 )
 
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
-
+        
         # Endpoint: PUT /users/<id>
         elif url["requested_resource"] == "users" and url["pk"] != 0:
             required_fields = [
@@ -273,10 +279,24 @@ class JSONServer(HandleRequests):
 
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
+        # Endpoint: PUT /comments/<id>
+        elif url["requested_resource"] == "comments" and url["pk"] != 0:
+            response_body = update_comment(url["pk"], put_body)
+            parsed = json.loads(response_body)
+
+            # Check if response contains an error from not finding the comment to update
+            if "error" in parsed:
+                return self.response(
+                    response_body,
+                    status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                )
+            return self.response(response_body, status.HTTP_200_SUCCESS.value)
+        
         else:
             return self.response(
                 "", status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value
             )
+
 
     def do_DELETE(self):  # pylint: disable=invalid-name
         """Handle DELETE requests from a client"""
