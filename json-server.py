@@ -16,6 +16,7 @@ from views import (
     get_all_categories,
     get_category_by_id,
     create_category,
+    delete_category, # Ticket #16 - Import the function that deletes categories
     update_post,
     get_comments_by_post_id,  # Ticket #21 - Import the function that fetches comments for a post
     create_comment,
@@ -263,6 +264,19 @@ class JSONServer(HandleRequests):
                 return self.response(
                     "A post id is required.",
                     status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                )
+        elif url["requested_resource"] == "categories":
+            if pk != 0:
+                delete_body = delete_category(pk)
+                parsed = json.loads(delete_body)
+                if "error" in parsed:
+                    return self.response(delete_body, status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value)
+                else:
+                    return self.response(delete_body, status.HTTP_204_SUCCESS_NO_RESPONSE_BODY.value)
+            else:
+                return self.response(
+                    json.dumps({"error": "A category id is required."}),
+                    status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
                 )
 
         else:
