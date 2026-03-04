@@ -148,3 +148,35 @@ VALUES ('Jason', 'Norman', 'jason.norman@example.com', 'Avid golfer and occasion
 -- New staff user
 INSERT INTO "Users" ("first_name", "last_name", "email", "bio", "username", "password", "profile_image_url", "created_on", "active", "is_staff")
 VALUES ('Lea', 'Edwards', 'lea.edwards@example.com', 'Site administrator, content moderator, and Soap officiant.', 'HealthyHabitsGirl', 'password123', 'https://picsum.photos/200', '2026-02-20', 1, 1);
+
+-- Add subject column to Comments table
+ALTER TABLE "Comments" ADD COLUMN "subject" varchar;
+
+-- Rename publication_date to created_on in Comments table for consistency with other tables
+ALTER TABLE Comments RENAME COLUMN publication_date TO created_on;
+
+-- Create unique index on PostReactions to prevent duplicate reactions from the same user on the same post
+CREATE UNIQUE INDEX IF NOT EXISTS idx_postreactions_user_post
+ON PostReactions (user_id, post_id);
+
+--TODO: run statements below for Ticket #38 - Refactor reactions to support Font Awesome icons and add color field 
+-- Since we are using SQLite, we have to use multiple ALTER TABLE statements to modify the Reactions table, as SQLite does not support multiple alterations in a single statement
+-- Refactor Reactions table: rename image_url to icon_class for Font Awesome support
+ALTER TABLE "Reactions" RENAME COLUMN "image_url" TO "icon_class";
+-- Add color to the reactions table
+ALTER TABLE "Reactions" ADD COLUMN "color" TEXT;
+
+-- Update existing 'happy' reaction to have a Font Awesome icon class and a color
+UPDATE "Reactions" SET "icon_class" = 'fas fa-laugh', "color" = '#ff3860' WHERE "label" = 'happy';
+
+-- Seed additional reactions
+INSERT INTO "Reactions" ("label", "icon_class", "color") VALUES ('heart', 'fas fa-heart', '#ff3860');
+INSERT INTO "Reactions" ("label", "icon_class", "color") VALUES ('like', 'fas fa-thumbs-up', '#3273dc');
+INSERT INTO "Reactions" ("label", "icon_class", "color") VALUES ('sad', 'fas fa-sad-tear', '#00d1b2');
+INSERT INTO "Reactions" ("label", "icon_class", "color") VALUES ('angry', 'fas fa-angry', '#ff3860');
+
+-- Seed PostReactions with sample data. Requires two users
+INSERT INTO "PostReactions" ("user_id", "reaction_id", "post_id") VALUES (1, 2, 1);
+INSERT INTO "PostReactions" ("user_id", "reaction_id", "post_id") VALUES (2, 3, 1);
+INSERT INTO "PostReactions" ("user_id", "reaction_id", "post_id") VALUES (1, 1, 2);
+--End of Statements for Ticket #38

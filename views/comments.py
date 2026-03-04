@@ -77,3 +77,67 @@ def create_comment(comment_data):
         }
 
     return json.dumps(created_comment)
+
+def get_comment_by_id(comment_id, query_params):
+    """Get a single comment by its ID"""
+
+    # Get expand parameters from query params
+    expand = query_params.get("_expand", [])
+
+    with sqlite3.connect("./db.sqlite3") as conn:
+        conn.row_factory = sqlite3.Row
+        db_cursor = conn.cursor()
+
+        # Build query dynamically based on expand parameters
+        select_clause, join_clause = build_comment_query(expand)
+
+        query = f"""
+            SELECT
+                {select_clause}
+            FROM Comments c
+            {join_clause}
+            WHERE c.id = ?
+        """
+
+        db_cursor.execute(query, (comment_id,))
+        comment_row_data = db_cursor.fetchone()
+
+        if comment_row_data:
+            comment = build_comment_object(comment_row_data, expand)
+        else:
+            comment = None
+
+    return json.dumps(comment)
+
+def update_comment(comment_id, updated_data):
+    """Update an existing comment in the database"""
+
+    try:
+        with sqlite3.connect("./db.sqlite3") as conn:
+            db_cursor = conn.cursor()
+
+            # Update the comment in the Comments table
+            db_cursor.execute(
+                """
+                UPDATE Comments
+                SET content = ?, subject = ?
+                WHERE id = ?
+                """,
+                (
+                    updated_data["content"],
+                    updated_data["subject"],
+                    comment_id,
+                ),
+            )
+
+        if db_cursor.rowcount == 0:
+                   
+            return json.dumps({"error": "Comment not found."})
+
+        return json.dumps({"message": "Comment updated successfully."})
+
+    except sqlite3.Error as e:      
+        return json.dumps({"error": str(e)})
+
+
+   
