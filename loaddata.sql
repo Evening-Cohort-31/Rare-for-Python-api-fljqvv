@@ -180,3 +180,15 @@ INSERT INTO "PostReactions" ("user_id", "reaction_id", "post_id") VALUES (1, 2, 
 INSERT INTO "PostReactions" ("user_id", "reaction_id", "post_id") VALUES (2, 3, 1);
 INSERT INTO "PostReactions" ("user_id", "reaction_id", "post_id") VALUES (1, 1, 2);
 --End of Statements for Ticket #38
+
+
+CREATE TABLE UserProfileImages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  file_path TEXT NOT NULL,                 -- e.g. "/static/uploads/users/7/uuid.png"
+  original_filename TEXT,
+  mime_type TEXT,                          -- "image/png" or "image/jpeg"
+  created_on TEXT NOT NULL DEFAULT (datetime('now')),
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  FOREIGN KEY(user_id) REFERENCES Users(id)
+);

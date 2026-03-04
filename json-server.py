@@ -4,6 +4,12 @@ import json
 from http.server import HTTPServer
 from helpers import is_valid_url
 
+# imports for dealing with file uploads
+import os
+import mimetypes
+from pathlib import Path
+from urllib.parse import unquote
+
 # Add your imports below this line
 
 from nss_handler import HandleRequests, status
@@ -33,14 +39,73 @@ from views import (
     create_or_update_postreactions,
     get_all_reactions,
     update_comment,
+    get_all_avatars,
 )
 
 
 class JSONServer(HandleRequests):
     """Server class to handle incoming HTTP requests for Rare"""
 
+    def serve_static_file(self, url_path: str) -> bool:
+        """
+        Serve files from the /static directory.
+
+        Returns True if it handled the request, otherwise False.
+        """
+
+        # Only handle /static/* paths
+        if not url_path.startswith("/static/"):
+            return False
+
+        # Decode URL-encoded characters (spaces, etc.)
+        url_path = unquote(url_path)
+
+        # Remove query string if any (shouldn't happen here but safe)
+        url_path = url_path.split("?")[0]
+
+        # Build absolute path to your server project's static folder.
+        # This assumes a folder named "static" exists in the same directory as this server file.
+        base_dir = Path(__file__).resolve().parent
+        static_root = base_dir / "static"
+
+        # Convert /static/avatars/cat.png -> static_root/avatars/cat.png
+        relative_path = url_path[len("/static/") :]  # "avatars/cat.png"
+        requested_file = (static_root / relative_path).resolve()
+
+        # Security: block directory traversal (../../etc/passwd)
+        try:
+            requested_file.relative_to(static_root.resolve())
+        except ValueError:
+            self.send_response(status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value)
+            self.end_headers()
+            return True
+
+        if not requested_file.exists() or not requested_file.is_file():
+            self.send_response(status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value)
+            self.end_headers()
+            return True
+
+        # Guess content type (image/png, image/jpeg, etc.)
+        content_type, _ = mimetypes.guess_type(str(requested_file))
+        if content_type is None:
+            content_type = "application/octet-stream"
+
+        file_bytes = requested_file.read_bytes()
+
+        self.send_response(status.HTTP_200_SUCCESS.value)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(file_bytes)))
+        self.end_headers()
+        self.wfile.write(file_bytes)
+
+        return True
+
     def do_GET(self):  # pylint: disable=invalid-name
         """Handle GET requests from a client"""
+
+        # Serve static assets first (avatars, uploads, etc.)
+        if self.serve_static_file(self.path):
+            return
 
         response_body = ""
         # Example: self.path = "/posts/3?user_id=1&_expand=category"
@@ -174,6 +239,12 @@ class JSONServer(HandleRequests):
                 if "post_id" in url["query_params"]:
                     post_id = url["query_params"]["post_id"][0]
                 response_body = get_all_postreactions(post_id)
+                return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
+        elif url["requested_resource"] == "avatars":
+            # Endpoint: GET /avatars
+            if url["pk"] == 0:
+                response_body = get_all_avatars()
                 return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
         else:
