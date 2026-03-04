@@ -2,10 +2,10 @@
 
 import json
 from http.server import HTTPServer
-from urllib.parse import urlparse
+from helpers import is_valid_url
 
 # Add your imports below this line
-from views import login_user, create_user, get_all_users, get_user_by_id
+
 from nss_handler import HandleRequests, status
 from views import (
     get_all_posts,
@@ -18,11 +18,21 @@ from views import (
     create_category,
     delete_category, # Ticket #16 - Import the function that deletes categories
     update_post,
-    get_comments_by_post_id,  # Ticket #21 - Import the function that fetches comments for a post
+    get_comments_by_post_id,
+    get_comment_by_id,
     create_comment,
     get_all_tags,
     get_tag_by_id,
     create_tag,
+    login_user,
+    create_user,
+    get_all_users,
+    get_user_by_id,
+    update_user,
+    get_all_postreactions,
+    create_or_update_postreactions,
+    get_all_reactions,
+    update_comment,
 )
 
 
@@ -49,10 +59,23 @@ class JSONServer(HandleRequests):
         url = self.parse_url(self.path)
 
         if url["requested_resource"] == "users":
+
+            # Endpoint: GET /users/<id>
             if url["pk"] != 0:
                 response_body = get_user_by_id(url["pk"])
+
+            # Endpoint: GET /users?active=true or GET /users?active=false
+            elif "active" in url["query_params"]:
+                # Handle active users query
+                active = url["query_params"]["active"][0]
+                response_body = get_all_users(
+                    active=True if active.lower() == "true" else False
+                )
+
+            # Endpoint: GET /users
             else:
                 response_body = get_all_users()
+
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
         elif url["requested_resource"] == "posts":
@@ -73,6 +96,7 @@ class JSONServer(HandleRequests):
             # TODO: add user expansion for this endpoint
             else:
                 response_body = get_all_posts(url["query_params"])
+
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
         elif url["requested_resource"] == "categories":
@@ -80,6 +104,7 @@ class JSONServer(HandleRequests):
             # Endpoint: GET /categories/<id>
             if url["pk"] != 0:
                 response_body = get_category_by_id(url["pk"])
+
             # Endpoint: GET /categories
             else:
                 response_body = get_all_categories()
@@ -104,28 +129,52 @@ class JSONServer(HandleRequests):
                 # Pass both post_id and full query_params so the function can handle _expand=user
                 response_body = get_comments_by_post_id(post_id, url["query_params"])
                 return self.response(response_body, status.HTTP_200_SUCCESS.value)
+            elif url["pk"] != 0:
+                response_body = get_comment_by_id(url["pk"], url["query_params"])
+                return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
             # If no post_id was provided, return a 400 bad request error
-            return self.response(
-                json.dumps({"error": "post_id query parameter is required"}),
-                status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
-            )
+            else:
+                return self.response(
+                    json.dumps({"error": "post_id query parameter is required"}),
+                    status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+                )
+
         elif url["requested_resource"] == "tags":
 
-            # Endpoint: GET /tags/<id>
-            # Placeholder for future tag endpoint (get by id)
+            #  Endpoint: GET /tags/<id>
+            #  Placeholder for future tag endpoint (get by id)
             if url["pk"] != 0:
                 response_body = get_tag_by_id(url["pk"])
+
             # Endpoint: GET /tags
             else:
                 response_body = get_all_tags()
-            # Check if response contains an error
+
+            #  Check if response contains an error
             parsed = json.loads(response_body)
             if "error" in parsed:
                 return self.response(
                     response_body, status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value
                 )
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
+        elif url["requested_resource"] == "reactions":
+
+            # Endpoint: GET /reactions
+            if url["pk"] == 0:
+                response_body = get_all_reactions()
+                return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
+        elif url["requested_resource"] == "postreactions":
+
+            # Endpoint: GET /postreactions or GET /postreactions?post_id=<id>
+            if url["pk"] == 0:
+                post_id = None
+                if "post_id" in url["query_params"]:
+                    post_id = url["query_params"]["post_id"][0]
+                response_body = get_all_postreactions(post_id)
+                return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
         else:
             return self.response(
@@ -144,18 +193,22 @@ class JSONServer(HandleRequests):
         # Parse the JSON body to a Python dictionary
         post_body = json.loads(post_body)
 
+        # Endpoint: POST /login
         if url["requested_resource"] == "login":
             response_body = login_user(post_body)
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
+        # Endpoint: POST /register
         elif url["requested_resource"] == "register":
             response_body = create_user(post_body)
             return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
 
+        # Endpoint: POST /posts
         elif url["requested_resource"] == "posts":
             response_body = create_post(post_body)
             return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
 
+        # Endpoint: POST /categories
         elif url["requested_resource"] == "categories":
             response_body = create_category(post_body)
             return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
@@ -196,23 +249,11 @@ class JSONServer(HandleRequests):
                 "content",
                 "approved",
             ]
-            # Collect any fields from required_fields that are absent in the request body
-            # Uses List Comprehension to create a list of missing fields
-            missing_fields = [f for f in required_fields if f not in put_body]
+            error = self.validate_required_fields(put_body, required_fields)
+            if error:
+                return error
 
-            if missing_fields:
-                return self.response(
-                    json.dumps(
-                        {
-                            "error": f"Missing required fields: {', '.join(missing_fields)}"
-                        }
-                    ),
-                    status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
-                )
-
-            # Validate image_url is a properly formatted URL (must be http or https)
-            parsed_url = urlparse(put_body["image_url"])
-            if not (parsed_url.scheme in ("http", "https") and parsed_url.netloc):
+            if not is_valid_url(put_body["image_url"]):
                 return self.response(
                     json.dumps(
                         {"error": "image_url must be a valid http or https URL."}
@@ -232,6 +273,67 @@ class JSONServer(HandleRequests):
 
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
+        # Endpoint: PUT /users/<id>
+        elif url["requested_resource"] == "users" and url["pk"] != 0:
+            required_fields = [
+                "first_name",
+                "last_name",
+                "username",
+                "email",
+                "password",
+                "bio",
+                "profile_image_url",
+            ]
+            error = self.validate_required_fields(put_body, required_fields)
+            if error:
+                return error
+
+            response_body = update_user(url["pk"], put_body)
+            parsed = json.loads(response_body)
+
+            # Check if response contains an error from not finding the user to update
+            if "error" in parsed:
+                return self.response(
+                    response_body,
+                    status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                )
+
+            return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
+        elif url["requested_resource"] == "postreactions":
+
+            # Endpoint: PUT /postreactions
+            if url["pk"] == 0:
+                required_fields = ["user_id", "post_id", "reaction_id"]
+                error = self.validate_required_fields(put_body, required_fields)
+                if error:
+                    return error
+
+                response_body = create_or_update_postreactions(put_body)
+                parsed = json.loads(response_body)
+
+                # Check if response contains an error from not finding the post or reaction
+                if "error" in parsed:
+                    return self.response(
+                        response_body,
+                        status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                    )
+
+                return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
+        # Endpoint: PUT /comments/<id>
+        elif url["requested_resource"] == "comments" and url["pk"] != 0:
+            response_body = update_comment(url["pk"], put_body)
+            parsed = json.loads(response_body)
+
+            # Check if response contains an error from not finding the comment to update
+            if "error" in parsed:
+                return self.response(
+                    response_body,
+                    status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                )
+            return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
         else:
             return self.response(
                 "", status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value
@@ -245,7 +347,7 @@ class JSONServer(HandleRequests):
 
         if url["requested_resource"] == "posts":
             if pk != 0:
-                # Parse the response from delete_post to check if it contains an error message about not finding the post to delete
+                # Parse the response from delete_post to check if it contains an error message
                 delete_body = delete_post(pk)
                 parsed = json.loads(delete_body)
 
@@ -283,6 +385,16 @@ class JSONServer(HandleRequests):
             return self.response(
                 "Not found", status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value
             )
+
+    def validate_required_fields(self, body, required_fields):
+        """Returns an error response if any required fields are missing, otherwise None"""
+        missing = [f for f in required_fields if f not in body]
+        if missing:
+            return self.response(
+                json.dumps({"error": f"Missing required fields: {', '.join(missing)}"}),
+                status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+            )
+        return None
 
 
 #
