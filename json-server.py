@@ -16,8 +16,9 @@ from views import (
     get_all_categories,
     get_category_by_id,
     create_category,
+    delete_category, # Ticket #16 - Import the function that deletes categories
     update_post,
-    get_comments_by_post_id,  # Ticket #21 - Import the function that fetches comments for a post
+    get_comments_by_post_id,
     get_comment_by_id,
     create_comment,
     get_all_tags,
@@ -28,6 +29,9 @@ from views import (
     get_all_users,
     get_user_by_id,
     update_user,
+    get_all_postreactions,
+    create_or_update_postreactions,
+    get_all_reactions,
     update_comment,
     update_tag,
 )
@@ -156,6 +160,23 @@ class JSONServer(HandleRequests):
                 )
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
+        elif url["requested_resource"] == "reactions":
+
+            # Endpoint: GET /reactions
+            if url["pk"] == 0:
+                response_body = get_all_reactions()
+                return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
+        elif url["requested_resource"] == "postreactions":
+
+            # Endpoint: GET /postreactions or GET /postreactions?post_id=<id>
+            if url["pk"] == 0:
+                post_id = None
+                if "post_id" in url["query_params"]:
+                    post_id = url["query_params"]["post_id"][0]
+                response_body = get_all_postreactions(post_id)
+                return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
         else:
             return self.response(
                 "", status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value
@@ -252,7 +273,7 @@ class JSONServer(HandleRequests):
                 )
 
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
-        
+
         # Endpoint: PUT /users/<id>
         elif url["requested_resource"] == "users" and url["pk"] != 0:
             required_fields = [
@@ -279,6 +300,27 @@ class JSONServer(HandleRequests):
                 )
 
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
+        elif url["requested_resource"] == "postreactions":
+
+            # Endpoint: PUT /postreactions
+            if url["pk"] == 0:
+                required_fields = ["user_id", "post_id", "reaction_id"]
+                error = self.validate_required_fields(put_body, required_fields)
+                if error:
+                    return error
+
+                response_body = create_or_update_postreactions(put_body)
+                parsed = json.loads(response_body)
+
+                # Check if response contains an error from not finding the post or reaction
+                if "error" in parsed:
+                    return self.response(
+                        response_body,
+                        status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                    )
+
+                return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
         # Endpoint: PUT /comments/<id>
         elif url["requested_resource"] == "comments" and url["pk"] != 0:
@@ -312,7 +354,6 @@ class JSONServer(HandleRequests):
                 "", status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value
             )
 
-
     def do_DELETE(self):  # pylint: disable=invalid-name
         """Handle DELETE requests from a client"""
 
@@ -340,6 +381,19 @@ class JSONServer(HandleRequests):
                 return self.response(
                     "A post id is required.",
                     status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                )
+        elif url["requested_resource"] == "categories":
+            if pk != 0:
+                delete_body = delete_category(pk)
+                parsed = json.loads(delete_body)
+                if "error" in parsed:
+                    return self.response(delete_body, status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value)
+                else:
+                    return self.response(delete_body, status.HTTP_204_SUCCESS_NO_RESPONSE_BODY.value)
+            else:
+                return self.response(
+                    json.dumps({"error": "A category id is required."}),
+                    status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
                 )
 
         else:
