@@ -104,3 +104,27 @@ def create_category(category):
         json_response = json.dumps({"id": category_id, "label": category["label"]})
 
     return json_response
+
+
+def delete_category(category_id):
+    """Delete a category by id"""
+    # Added try/except block to catch any potential database errors and return them as JSON error messages
+    try:
+        with sqlite3.connect("./db.sqlite3") as conn:
+            db_cursor = conn.cursor()
+
+            db_cursor.execute(
+                """
+                DELETE FROM Categories
+                WHERE id = ?
+                """,
+                (category_id,),
+            )
+
+            if db_cursor.rowcount == 0:
+                return json.dumps({"error": "Category not found"})
+
+        return json.dumps({"message": "Category deleted successfully"})
+
+    except sqlite3.Error as e:
+        return json.dumps({"error": str(e)})

@@ -15,6 +15,15 @@ from .posts import (
     update_post,
     delete_post,
 )
+from .categories import (
+    get_all_categories,
+    get_category_by_id,
+    create_category,
+    delete_category,
+)
+
+# Ticket #21 - Export get_comments_by_post_id so json-server.py can use it to handle GET /comments?post_id=<id>
+from .comments import get_comments_by_post_id, create_comment
 from .categories import get_all_categories, get_category_by_id, create_category
 from .comments import (
     get_comments_by_post_id,
