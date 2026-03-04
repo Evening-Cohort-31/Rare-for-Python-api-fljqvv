@@ -278,7 +278,6 @@ class JSONServer(HandleRequests):
                     json.dumps({"error": "A category id is required."}),
                     status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
                 )
-
         else:
             return self.response(
                 "Not found", status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value
