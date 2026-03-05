@@ -40,7 +40,7 @@ def get_tag_by_id(tag_id):
         if data:
             return json.dumps(dict(data))
         else:
-            return json.dumps({"message": "Tag not found."}), 404
+            return json.dumps({"error": "Tag not found."})
 
 def update_tag(tag_id, updated_data):
     """Update an existing tag in the database"""
@@ -54,7 +54,7 @@ def update_tag(tag_id, updated_data):
         """, (updated_data["label"], tag_id))
 
         if db_cursor.rowcount == 0:
-            return json.dumps({"message": "Tag not found."}), 404
+            return json.dumps({"error": "Tag not found."})
 
         return json.dumps({"message": "Tag updated successfully."})
         
