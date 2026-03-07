@@ -140,7 +140,7 @@ class JSONServer(HandleRequests):
                     return self.response(
                         response_body,
                         status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
-                )
+                    )
 
                 return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
@@ -344,7 +344,7 @@ class JSONServer(HandleRequests):
                     status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
                 )
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
-        
+
         # Endpoint: PUT /tags/<id>
         elif url["requested_resource"] == "tags" and url["pk"] != 0:
             response_body = update_tag(url["pk"], put_body)
@@ -356,9 +356,8 @@ class JSONServer(HandleRequests):
                     response_body,
                     status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
                 )
-            return self.response(response_body, status.HTTP_200_SUCCESS.value)       
-        
-        
+            return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
         else:
             return self.response(
                 "", status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value
