@@ -34,7 +34,11 @@ from views import (
     get_all_reactions,
     update_comment,
     update_tag,
+    create_subscription,
+    get_all_subscriptions,
+    delete_subscription,
 )
+
 
 
 class JSONServer(HandleRequests):
@@ -185,6 +189,12 @@ class JSONServer(HandleRequests):
                     post_id = url["query_params"]["post_id"][0]
                 response_body = get_all_postreactions(post_id)
                 return self.response(response_body, status.HTTP_200_SUCCESS.value)
+            
+        # Endpoint: GET /subscriptions
+        elif url["requested_resource"] == "subscriptions":
+            if url["pk"] == 0:
+                response_body = get_all_subscriptions()
+                return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
         else:
             return self.response(
@@ -231,6 +241,11 @@ class JSONServer(HandleRequests):
         # Endpoint: POST /tags
         elif url["requested_resource"] == "tags":
             response_body = create_tag(post_body)
+            return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
+        
+        # Endpoint: POST /subscriptions
+        elif url ["requested_resource"] == "subscriptions":
+            response_body = create_subscription(post_body)
             return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
 
         else:
@@ -402,6 +417,19 @@ class JSONServer(HandleRequests):
             else:
                 return self.response(
                     json.dumps({"error": "A category id is required."}),
+                    status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+                )
+        elif url["requested_resource"] == "subscriptions":
+            if pk != 0:
+                delete_body = delete_subscription(pk)
+                parsed = json.loads(delete_body)
+                if "error" in parsed:
+                    return self.response(delete_body, status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value)
+                else:
+                    return self.response("", status.HTTP_204_SUCCESS_NO_RESPONSE_BODY.value)
+            else:
+                return self.response(
+                    json.dumps({"error": "A subscription id is required."}),
                     status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
                 )
 
