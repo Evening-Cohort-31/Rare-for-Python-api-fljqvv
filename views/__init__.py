@@ -41,5 +41,6 @@ from .postreactions import (
 )
 
 from .reactions import (
-    get_all_reactions
+    get_all_reactions,
+    create_reaction,
 )

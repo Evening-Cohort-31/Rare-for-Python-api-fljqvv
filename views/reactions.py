@@ -35,3 +35,26 @@ def get_all_reactions():
             reactions.append(reaction)
 
     return json.dumps(reactions)
+
+
+def create_reaction(reaction_data):
+    """Create a new reaction"""
+
+    with sqlite3.connect("./db.sqlite3") as conn:
+        db_cursor = conn.cursor()
+
+        db_cursor.execute(
+            """
+            INSERT INTO Reactions (label, icon_class, color)
+            VALUES (?, ?, ?)
+            """,
+            (
+                reaction_data["label"],
+                reaction_data["icon_class"],
+                reaction_data["color"],
+            ),
+        )
+
+        id = db_cursor.lastrowid
+
+    return json.dumps({"id": id, "label": reaction_data["label"], "icon_class": reaction_data["icon_class"], "color": reaction_data["color"]})

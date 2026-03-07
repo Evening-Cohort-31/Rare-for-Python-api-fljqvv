@@ -32,6 +32,7 @@ from views import (
     get_all_postreactions,
     create_or_update_postreactions,
     get_all_reactions,
+    create_reaction,
     update_comment,
     update_tag,
 )
@@ -231,6 +232,22 @@ class JSONServer(HandleRequests):
         # Endpoint: POST /tags
         elif url["requested_resource"] == "tags":
             response_body = create_tag(post_body)
+            return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
+
+        elif url["requested_resource"] == "reactions":
+            required_fields = ["label", "icon_class", "color"]
+            error = self.validate_required_fields(post_body, required_fields)
+            if error:
+                return error
+            response_body = create_reaction(post_body)
+            return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
+
+        elif url["requested_resource"] == "postreactions":
+            required_fields = ["user_id", "post_id", "reaction_id"]
+            error = self.validate_required_fields(post_body, required_fields)
+            if error:
+                return error
+            response_body = create_or_update_postreactions(post_body)
             return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
 
         else:
