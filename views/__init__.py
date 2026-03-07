@@ -30,6 +30,7 @@ from .comments import (
     create_comment,
     get_comment_by_id,
     update_comment,
+    delete_comment,
 )
 from .tags import get_all_tags, get_tag_by_id, create_tag
 from .postreactions import (

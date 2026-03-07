@@ -16,11 +16,12 @@ from views import (
     get_all_categories,
     get_category_by_id,
     create_category,
-    delete_category, # Ticket #16 - Import the function that deletes categories
+    delete_category,  # Ticket #16 - Import the function that deletes categories
     update_post,
     get_comments_by_post_id,
     get_comment_by_id,
     create_comment,
+    delete_comment,  # Ticket #22 - Import the function that deletes comments
     get_all_tags,
     get_tag_by_id,
     create_tag,
@@ -372,12 +373,36 @@ class JSONServer(HandleRequests):
                 delete_body = delete_category(pk)
                 parsed = json.loads(delete_body)
                 if "error" in parsed:
-                    return self.response(delete_body, status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value)
+                    return self.response(
+                        delete_body,
+                        status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                    )
                 else:
-                    return self.response(delete_body, status.HTTP_204_SUCCESS_NO_RESPONSE_BODY.value)
+                    return self.response(
+                        delete_body, status.HTTP_204_SUCCESS_NO_RESPONSE_BODY.value
+                    )
             else:
                 return self.response(
                     json.dumps({"error": "A category id is required."}),
+                    status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+                )
+
+        elif url["requested_resource"] == "comments":
+            if pk != 0:
+                delete_body = delete_comment(pk)
+                parsed = json.loads(delete_body)
+                if "error" in parsed:
+                    return self.response(
+                        delete_body,
+                        status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                    )
+                else:
+                    return self.response(
+                        delete_body, status.HTTP_204_SUCCESS_NO_RESPONSE_BODY.value
+                    )
+            else:
+                return self.response(
+                    json.dumps({"error": "A comment id is required."}),
                     status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
                 )
 
