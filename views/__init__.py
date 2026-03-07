@@ -28,9 +28,18 @@ from .comments import (
     get_comment_by_id,
     update_comment,
 )
-from .tags import get_all_tags, get_tag_by_id, create_tag, delete_tag
+
+from .tags import (
+    get_all_tags,
+    get_tag_by_id,
+    create_tag,
+    update_tag,
+    delete_tag,
+)
+
 from .postreactions import (
     get_all_postreactions,
     create_or_update_postreactions,
 )
+
 from .reactions import get_all_reactions
