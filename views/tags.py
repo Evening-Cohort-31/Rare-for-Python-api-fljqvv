@@ -25,8 +25,39 @@ def get_all_tags():
 
 def get_tag_by_id(tag_id):
     """Get a single tag by its ID"""
-    pass
+    with sqlite3.connect("./db.sqlite3") as conn:
+        conn.row_factory = sqlite3.Row
+        db_cursor = conn.cursor()
 
+        db_cursor.execute("""
+            SELECT id, label
+            FROM Tags
+            WHERE id = ?
+        """, (tag_id,))
+
+        data = db_cursor.fetchone()
+
+        if data:
+            return json.dumps(dict(data))
+        else:
+            return json.dumps({"error": "Tag not found."})
+
+def update_tag(tag_id, updated_data):
+    """Update an existing tag in the database"""
+    with sqlite3.connect("./db.sqlite3") as conn:
+        db_cursor = conn.cursor()
+
+        db_cursor.execute("""
+            UPDATE Tags
+            SET label = ?
+            WHERE id = ?
+        """, (updated_data["label"], tag_id))
+
+        if db_cursor.rowcount == 0:
+            return json.dumps({"error": "Tag not found."})
+
+        return json.dumps({"message": "Tag updated successfully."})
+        
 def create_tag(tag_data):
     """Create a new tag in the database"""
     with sqlite3.connect("./db.sqlite3") as conn:
