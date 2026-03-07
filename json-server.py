@@ -16,6 +16,7 @@ from views import (
     get_all_categories,
     get_category_by_id,
     create_category,
+    update_category,
     delete_category,  # Ticket #16 - Import the function that deletes categories
     update_post,
     get_comments_by_post_id,
@@ -331,6 +332,24 @@ class JSONServer(HandleRequests):
                     )
 
                 return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
+        # Endpoint: PUT /categories/<id>
+        elif url["requested_resource"] == "categories" and url["pk"] != 0:
+            required_fields = ["label"]
+            error = self.validate_required_fields(put_body, required_fields)
+            if error:
+                return error
+
+            response_body = update_category(url["pk"], put_body)
+            parsed = json.loads(response_body)
+
+            if "error" in parsed:
+                return self.response(
+                    response_body,
+                    status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                )
+
+            return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
         # Endpoint: PUT /comments/<id>
         elif url["requested_resource"] == "comments" and url["pk"] != 0:
