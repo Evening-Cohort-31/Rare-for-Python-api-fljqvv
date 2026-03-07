@@ -143,7 +143,7 @@ def update_comment(comment_id, updated_data):
 
 
 def delete_comment(comment_id):
-    """Delete a category by id"""
+    """Delete a comment by id"""
     # Added try/except block to catch any potential database errors and return them as JSON error messages
     try:
         with sqlite3.connect("./db.sqlite3") as conn:
