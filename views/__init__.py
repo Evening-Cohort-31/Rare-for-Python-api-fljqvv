@@ -28,11 +28,13 @@ from .comments import (
     get_comment_by_id,
     update_comment,
 )
+
 from .tags import (
     get_all_tags,
-    get_tag_by_id, 
-    create_tag, 
-    update_tag
+    get_tag_by_id,
+    create_tag,
+    update_tag,
+    delete_tag,
 )
 
 from .postreactions import (
@@ -40,6 +42,4 @@ from .postreactions import (
     create_or_update_postreactions,
 )
 
-from .reactions import (
-    get_all_reactions
-)
+from .reactions import get_all_reactions
