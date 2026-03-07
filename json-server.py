@@ -17,6 +17,7 @@ from views import (
     get_category_by_id,
     create_category,
     update_category,
+    delete_category,  # Ticket #16 - Import the function that deletes categories
     update_post,
     get_comments_by_post_id,
     get_comment_by_id,
@@ -24,6 +25,7 @@ from views import (
     get_all_tags,
     get_tag_by_id,
     create_tag,
+    delete_tag,  # Ticket #18 - Import the function that deletes tags
     login_user,
     create_user,
     get_all_users,
@@ -33,6 +35,7 @@ from views import (
     create_or_update_postreactions,
     get_all_reactions,
     update_comment,
+    update_tag,
 )
 
 
@@ -129,8 +132,17 @@ class JSONServer(HandleRequests):
                 # Pass both post_id and full query_params so the function can handle _expand=user
                 response_body = get_comments_by_post_id(post_id, url["query_params"])
                 return self.response(response_body, status.HTTP_200_SUCCESS.value)
+            # Endpoint: GET /comments/<id>
+            # The client sends the comment id in the URL, e.g. /comments/5
             elif url["pk"] != 0:
                 response_body = get_comment_by_id(url["pk"], url["query_params"])
+                parsed = json.loads(response_body)
+                if "error" in parsed:
+                    return self.response(
+                        response_body,
+                        status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                )
+
                 return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
             # If no post_id was provided, return a 400 bad request error
@@ -351,7 +363,21 @@ class JSONServer(HandleRequests):
                     status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
                 )
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
+        
+        # Endpoint: PUT /tags/<id>
+        elif url["requested_resource"] == "tags" and url["pk"] != 0:
+            response_body = update_tag(url["pk"], put_body)
+            parsed = json.loads(response_body)
 
+            # Check if response contains an error from not finding the comment to update
+            if "error" in parsed:
+                return self.response(
+                    response_body,
+                    status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                )
+            return self.response(response_body, status.HTTP_200_SUCCESS.value)       
+        
+        
         else:
             return self.response(
                 "", status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value
@@ -384,6 +410,42 @@ class JSONServer(HandleRequests):
                 return self.response(
                     "A post id is required.",
                     status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                )
+        elif url["requested_resource"] == "categories":
+            if pk != 0:
+                delete_body = delete_category(pk)
+                parsed = json.loads(delete_body)
+                if "error" in parsed:
+                    return self.response(
+                        delete_body,
+                        status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                    )
+                else:
+                    return self.response(
+                        delete_body, status.HTTP_204_SUCCESS_NO_RESPONSE_BODY.value
+                    )
+            else:
+                return self.response(
+                    json.dumps({"error": "A category id is required."}),
+                    status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+                )
+        elif url["requested_resource"] == "tags":
+            if pk != 0:
+                delete_body = delete_tag(pk)
+                parsed = json.loads(delete_body)
+                if "error" in parsed:
+                    return self.response(
+                        delete_body,
+                        status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                    )
+                else:
+                    return self.response(
+                        delete_body, status.HTTP_204_SUCCESS_NO_RESPONSE_BODY.value
+                    )
+            else:
+                return self.response(
+                    json.dumps({"error": "A tag id is required."}),
+                    status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
                 )
 
         else:

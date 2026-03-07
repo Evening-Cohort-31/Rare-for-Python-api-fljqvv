@@ -105,7 +105,7 @@ def get_comment_by_id(comment_id, query_params):
         if comment_row_data:
             comment = build_comment_object(comment_row_data, expand)
         else:
-            comment = None
+            comment = {"error": "Comment not found."}
 
     return json.dumps(comment)
 
