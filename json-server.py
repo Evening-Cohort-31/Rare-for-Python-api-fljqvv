@@ -33,6 +33,7 @@ from views import (
     create_or_update_postreactions,
     get_all_reactions,
     update_comment,
+    update_tag,
 )
 
 
@@ -129,8 +130,17 @@ class JSONServer(HandleRequests):
                 # Pass both post_id and full query_params so the function can handle _expand=user
                 response_body = get_comments_by_post_id(post_id, url["query_params"])
                 return self.response(response_body, status.HTTP_200_SUCCESS.value)
+            # Endpoint: GET /comments/<id>
+            # The client sends the comment id in the URL, e.g. /comments/5
             elif url["pk"] != 0:
                 response_body = get_comment_by_id(url["pk"], url["query_params"])
+                parsed = json.loads(response_body)
+                if "error" in parsed:
+                    return self.response(
+                        response_body,
+                        status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                )
+
                 return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
             # If no post_id was provided, return a 400 bad request error
@@ -333,7 +343,21 @@ class JSONServer(HandleRequests):
                     status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
                 )
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
+        
+        # Endpoint: PUT /tags/<id>
+        elif url["requested_resource"] == "tags" and url["pk"] != 0:
+            response_body = update_tag(url["pk"], put_body)
+            parsed = json.loads(response_body)
 
+            # Check if response contains an error from not finding the comment to update
+            if "error" in parsed:
+                return self.response(
+                    response_body,
+                    status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                )
+            return self.response(response_body, status.HTTP_200_SUCCESS.value)       
+        
+        
         else:
             return self.response(
                 "", status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value
