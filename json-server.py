@@ -1,14 +1,17 @@
 """Module for JSON server handling Rare API requests"""
 
 import json
-from http.server import HTTPServer
-from helpers import is_valid_url
 
-# imports for dealing with file uploads
-import os
+# imports for dealing with file uploads and serving static files
 import mimetypes
 from pathlib import Path
 from urllib.parse import unquote
+import uuid
+import cgi
+
+from http.server import HTTPServer
+from helpers import is_valid_url
+
 
 # Add your imports below this line
 
@@ -41,6 +44,8 @@ from views import (
     update_comment,
     update_tag,
     get_all_avatars,
+    save_uploaded_profile_image,
+    get_all_profile_images,
 )
 
 
@@ -257,6 +262,13 @@ class JSONServer(HandleRequests):
                 response_body = get_all_avatars()
                 return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
+        elif url["requested_resource"] == "profile-images":
+            # Endpoint: GET /profile-images?user_id=<id>
+            if "user_id" in url["query_params"]:
+                user_id = url["query_params"]["user_id"][0]
+                response_body = get_all_profile_images(user_id)
+                return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
         else:
             return self.response(
                 "", status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value
@@ -267,6 +279,10 @@ class JSONServer(HandleRequests):
 
         response_body = ""
         url = self.parse_url(self.path)
+
+        # Endpoint: POST /profile-images for handling multipart form uploads of profile images
+        if url["requested_resource"] == "profile-images":
+            return self.handle_profile_image_upload()
 
         # Get content length to read the body
         content_length = int(self.headers.get("Content-Length", 0))
@@ -494,6 +510,99 @@ class JSONServer(HandleRequests):
                 status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
             )
         return None
+
+    def handle_profile_image_upload(self):
+        """Handle multipart upload for user profile images."""
+
+        content_type = self.headers.get("Content-Type", "")
+        if "multipart/form-data" not in content_type:
+            return self.response(
+                json.dumps({"error": "Content-Type must be multipart/form-data"}),
+                status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+            )
+
+        form = cgi.FieldStorage(
+            fp=self.rfile,
+            headers=self.headers,
+            environ={
+                "REQUEST_METHOD": "POST",
+                "CONTENT_TYPE": content_type,
+            },
+        )
+
+        user_id = form.getvalue("user_id")
+        if not user_id:
+            return self.response(
+                json.dumps({"error": "user_id is required"}),
+                status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+            )
+
+        if "image" not in form:
+            return self.response(
+                json.dumps({"error": "image file is required"}),
+                status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+            )
+
+        image_field = form["image"]
+
+        if not getattr(image_field, "filename", None):
+            return self.response(
+                json.dumps({"error": "No file selected"}),
+                status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+            )
+
+        original_filename = image_field.filename
+        mime_type = image_field.type or ""
+
+        allowed_types = {
+            "image/png": ".png",
+            "image/jpeg": ".jpg",
+            "image/webp": ".webp",
+            "image/gif": ".gif",
+        }
+
+        if mime_type not in allowed_types:
+            return self.response(
+                json.dumps({"error": "Only PNG, JPG, WEBP, and GIF files are allowed"}),
+                status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+            )
+
+        file_bytes = image_field.file.read()
+
+        max_size = 5 * 1024 * 1024  # 5 MB
+        if len(file_bytes) > max_size:
+            return self.response(
+                json.dumps({"error": "File too large. Max size is 5 MB"}),
+                status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+            )
+
+        file_extension = allowed_types[mime_type]
+        safe_filename = f"{uuid.uuid4()}{file_extension}"
+
+        base_dir = Path(__file__).resolve().parent
+        upload_dir = base_dir / f"static/uploads/users/{user_id}"
+        upload_dir.mkdir(parents=True, exist_ok=True)
+
+        file_path = upload_dir / safe_filename
+        file_path.write_bytes(file_bytes)
+
+        image_url = f"/static/uploads/users/{user_id}/{safe_filename}"
+
+        response_body = save_uploaded_profile_image(
+            int(user_id),
+            image_url,
+            original_filename,
+            mime_type,
+        )
+
+        parsed = json.loads(response_body)
+        if "error" in parsed:
+            return self.response(
+                response_body,
+                status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+            )
+
+        return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
 
 
 #

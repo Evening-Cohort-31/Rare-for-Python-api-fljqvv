@@ -11,7 +11,9 @@ def get_all_avatars():
     """Return a list of available avatar URLs from /static/avatars."""
 
     # This assumes static/ is in the same directory as json-server.py
-    # AND that you run the server with working directory set to that same folder.
+    # AND that you run the server with working directory set to that same folder
+    # Assigns a URL path for each valid image file found in the avatars directory
+    # Path returns objects that we can use methods like is_file() and suffix on, which is more robust than string manipulation
     avatars_dir = Path("./static/avatars")
 
     if not avatars_dir.exists() or not avatars_dir.is_dir():
