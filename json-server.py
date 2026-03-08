@@ -25,7 +25,8 @@ from views import (
     get_all_categories,
     get_category_by_id,
     create_category,
-    delete_category,  # Ticket #16 - Import the function that deletes categories
+    update_category,
+    delete_category,
     update_post,
     get_comments_by_post_id,
     get_comment_by_id,
@@ -33,6 +34,7 @@ from views import (
     get_all_tags,
     get_tag_by_id,
     create_tag,
+    delete_tag,  # Ticket #18 - Import the function that deletes tags
     login_user,
     create_user,
     get_all_users,
@@ -418,6 +420,24 @@ class JSONServer(HandleRequests):
 
                 return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
+        # Endpoint: PUT /categories/<id>
+        elif url["requested_resource"] == "categories" and url["pk"] != 0:
+            required_fields = ["label"]
+            error = self.validate_required_fields(put_body, required_fields)
+            if error:
+                return error
+
+            response_body = update_category(url["pk"], put_body)
+            parsed = json.loads(response_body)
+
+            if "error" in parsed:
+                return self.response(
+                    response_body,
+                    status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                )
+
+            return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
         # Endpoint: PUT /comments/<id>
         elif url["requested_resource"] == "comments" and url["pk"] != 0:
             response_body = update_comment(url["pk"], put_body)
@@ -493,6 +513,24 @@ class JSONServer(HandleRequests):
             else:
                 return self.response(
                     json.dumps({"error": "A category id is required."}),
+                    status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+                )
+        elif url["requested_resource"] == "tags":
+            if pk != 0:
+                delete_body = delete_tag(pk)
+                parsed = json.loads(delete_body)
+                if "error" in parsed:
+                    return self.response(
+                        delete_body,
+                        status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                    )
+                else:
+                    return self.response(
+                        delete_body, status.HTTP_204_SUCCESS_NO_RESPONSE_BODY.value
+                    )
+            else:
+                return self.response(
+                    json.dumps({"error": "A tag id is required."}),
                     status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
                 )
 
