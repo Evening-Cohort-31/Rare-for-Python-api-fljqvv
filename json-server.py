@@ -54,60 +54,6 @@ from views import (
 class JSONServer(HandleRequests):
     """Server class to handle incoming HTTP requests for Rare"""
 
-    def serve_static_file(self, url_path: str) -> bool:
-        """
-        Serve files from the /static directory.
-
-        Returns True if it handled the request, otherwise False.
-        """
-
-        # Only handle /static/* paths
-        if not url_path.startswith("/static/"):
-            return False
-
-        # Decode URL-encoded characters (spaces, etc.)
-        url_path = unquote(url_path)
-
-        # Remove query string if any (shouldn't happen here but safe)
-        url_path = url_path.split("?")[0]
-
-        # Build absolute path to your server project's static folder.
-        # This assumes a folder named "static" exists in the same directory as this server file.
-        base_dir = Path(__file__).resolve().parent
-        static_root = base_dir / "static"
-
-        # Convert /static/avatars/cat.png -> static_root/avatars/cat.png
-        relative_path = url_path[len("/static/") :]  # "avatars/cat.png"
-        requested_file = (static_root / relative_path).resolve()
-
-        # Security: block directory traversal (../../etc/passwd)
-        try:
-            requested_file.relative_to(static_root.resolve())
-        except ValueError:
-            self.send_response(status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value)
-            self.end_headers()
-            return True
-
-        if not requested_file.exists() or not requested_file.is_file():
-            self.send_response(status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value)
-            self.end_headers()
-            return True
-
-        # Guess content type (image/png, image/jpeg, etc.)
-        content_type, _ = mimetypes.guess_type(str(requested_file))
-        if content_type is None:
-            content_type = "application/octet-stream"
-
-        file_bytes = requested_file.read_bytes()
-
-        self.send_response(status.HTTP_200_SUCCESS.value)
-        self.send_header("Content-Type", content_type)
-        self.send_header("Content-Length", str(len(file_bytes)))
-        self.end_headers()
-        self.wfile.write(file_bytes)
-
-        return True
-
     def do_GET(self):  # pylint: disable=invalid-name
         """Handle GET requests from a client"""
 
@@ -550,16 +496,28 @@ class JSONServer(HandleRequests):
         return None
 
     def handle_profile_image_upload(self):
-        """Handle multipart upload for user profile images."""
+        """
+        Handle multipart upload for user profile images.
+
+        Expects a multipart/form-data POST request with fields:
+                - user_id: the ID of the user uploading the image
+                - image: the image file to upload
+        Validates the file type and size, saves the file to a directory specific to the user.
+        Then generates a URL for the uploaded image, saves the metadata to the database, and
+        updates the user's profile image URL in the database.
+        """
 
         content_type = self.headers.get("Content-Type", "")
+        # Multipart form data is required for file uploads,
+        # If the content type is not multipart/form-data, return an error
         if "multipart/form-data" not in content_type:
             return self.response(
                 json.dumps({"error": "Content-Type must be multipart/form-data"}),
                 status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
             )
 
-        form = cgi.FieldStorage(
+        # Parse the multipart form data using cgi.FieldStorage (part of the Python standard library)
+        form = cgi.FieldStorage(  # type: ignore[arg-type]
             fp=self.rfile,
             headers=self.headers,
             environ={
@@ -568,6 +526,7 @@ class JSONServer(HandleRequests):
             },
         )
 
+        # Extract user_id from the form data to know where to save the uploaded image
         user_id = form.getvalue("user_id")
         if not user_id:
             return self.response(
@@ -575,6 +534,7 @@ class JSONServer(HandleRequests):
                 status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
             )
 
+        # Ensure an image file was included in the form data
         if "image" not in form:
             return self.response(
                 json.dumps({"error": "image file is required"}),
@@ -583,15 +543,18 @@ class JSONServer(HandleRequests):
 
         image_field = form["image"]
 
+        # Ensure a file was selected for upload (filename should not be empty)
         if not getattr(image_field, "filename", None):
             return self.response(
                 json.dumps({"error": "No file selected"}),
                 status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
             )
 
+        # Extract the original filename and MIME type for validation and storage
         original_filename = image_field.filename
         mime_type = image_field.type or ""
 
+        # Validate the uploaded file's MIME type and size before saving
         allowed_types = {
             "image/png": ".png",
             "image/jpeg": ".jpg",
@@ -599,31 +562,39 @@ class JSONServer(HandleRequests):
             "image/gif": ".gif",
         }
 
+        # Validate MIME type against allowed types
+        # MIME stands for "Multipurpose Internet Mail Extensions"
+        # It is a standard way to indicate the type of a file
         if mime_type not in allowed_types:
             return self.response(
                 json.dumps({"error": "Only PNG, JPG, WEBP, and GIF files are allowed"}),
                 status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
             )
 
+        # Validate file size. I've set this to be 5 MB, but you can adjust as needed.
         file_bytes = image_field.file.read()
-
-        max_size = 5 * 1024 * 1024  # 5 MB
+        max_size = 5 * 1024 * 1024
         if len(file_bytes) > max_size:
             return self.response(
                 json.dumps({"error": "File too large. Max size is 5 MB"}),
                 status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
             )
 
+        # Generate a safe filename using a UUID to prevent collisions and security issues
         file_extension = allowed_types[mime_type]
         safe_filename = f"{uuid.uuid4()}{file_extension}"
 
+        # Save the file to the server's filesystem in a directory specific to the user
         base_dir = Path(__file__).resolve().parent
         upload_dir = base_dir / f"static/uploads/users/{user_id}"
         upload_dir.mkdir(parents=True, exist_ok=True)
 
+        # Save the file to disk
         file_path = upload_dir / safe_filename
         file_path.write_bytes(file_bytes)
 
+        # Construct the URL to access the uploaded image
+        # This will be stored in the database for the user and returned to the client
         image_url = f"/static/uploads/users/{user_id}/{safe_filename}"
 
         response_body = save_uploaded_profile_image(
@@ -641,6 +612,60 @@ class JSONServer(HandleRequests):
             )
 
         return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
+
+    def serve_static_file(self, url_path: str) -> bool:
+        """
+        Serve files from the /static directory.
+        Blocks directory traversal and only serves files within the static folder.
+        Returns True if it handled the request, otherwise False.
+        """
+
+        # Only handle /static/* paths
+        if not url_path.startswith("/static/"):
+            return False
+
+        # Decode URL-encoded characters (spaces, etc.)
+        url_path = unquote(url_path)
+
+        # Remove query string if any (shouldn't happen here but safe)
+        url_path = url_path.split("?")[0]
+
+        # Build absolute path to your server project's static folder.
+        # This assumes a folder named "static" exists in the same directory as this server file.
+        base_dir = Path(__file__).resolve().parent
+        static_root = base_dir / "static"
+
+        # Convert /static/avatars/cat.png -> static_root/avatars/cat.png
+        relative_path = url_path[len("/static/") :]  # "avatars/cat.png"
+        requested_file = (static_root / relative_path).resolve()
+
+        # Security: block directory traversal (../../etc/passwd)
+        try:
+            requested_file.relative_to(static_root.resolve())
+        except ValueError:
+            self.send_response(status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value)
+            self.end_headers()
+            return True
+
+        if not requested_file.exists() or not requested_file.is_file():
+            self.send_response(status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value)
+            self.end_headers()
+            return True
+
+        # Guess content type (image/png, image/jpeg, etc.)
+        content_type, _ = mimetypes.guess_type(str(requested_file))
+        if content_type is None:
+            content_type = "application/octet-stream"
+
+        file_bytes = requested_file.read_bytes()
+
+        self.send_response(status.HTTP_200_SUCCESS.value)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(file_bytes)))
+        self.end_headers()
+        self.wfile.write(file_bytes)
+
+        return True
 
 
 #
