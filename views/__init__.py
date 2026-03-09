@@ -19,6 +19,7 @@ from .categories import (
     get_all_categories,
     get_category_by_id,
     create_category,
+    update_category,
     delete_category,
 )
 
@@ -31,9 +32,18 @@ from .comments import (
     update_comment,
     delete_comment,
 )
-from .tags import get_all_tags, get_tag_by_id, create_tag
+
+from .tags import (
+    get_all_tags,
+    get_tag_by_id,
+    create_tag,
+    update_tag,
+    delete_tag,
+)
+
 from .postreactions import (
     get_all_postreactions,
     create_or_update_postreactions,
 )
+
 from .reactions import get_all_reactions
