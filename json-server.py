@@ -7,7 +7,8 @@ import mimetypes
 from pathlib import Path
 from urllib.parse import unquote
 import uuid
-import cgi
+from email.parser import BytesParser
+from email.message import EmailMessage
 
 from http.server import HTTPServer
 from helpers import is_valid_url
@@ -536,18 +537,50 @@ class JSONServer(HandleRequests):
                 status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
             )
 
-        # Parse the multipart form data using cgi.FieldStorage (part of the Python standard library)
-        form = cgi.FieldStorage(  # type: ignore[arg-type]
-            fp=self.rfile,
-            headers=self.headers,
-            environ={
-                "REQUEST_METHOD": "POST",
-                "CONTENT_TYPE": content_type,
-            },
-        )
+        # Parse the multipart form data manually since we need direct access to boundaries
+        content_length = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(content_length)
+
+        # Parse multipart data manually
+        boundary = content_type.split("boundary=")[1].encode()
+        parts = body.split(b"--" + boundary)
+
+        form_data = {}
+        image_field = None
+
+        for part in parts:
+            if not part or part == b"--\r\n" or part == b"--":
+                continue
+
+            headers_end = part.find(b"\r\n\r\n")
+            if headers_end == -1:
+                continue
+
+            part_headers = part[:headers_end].decode(errors="ignore")
+            part_body = part[headers_end + 4 :].rstrip(b"\r\n")
+
+            if "Content-Disposition" in part_headers:
+                if 'name="user_id"' in part_headers:
+                    form_data["user_id"] = part_body.decode()
+                elif 'name="image"' in part_headers:
+                    filename_match = (
+                        part_headers.split('filename="')[1].split('"')[0]
+                        if 'filename="' in part_headers
+                        else None
+                    )
+                    content_type_match = (
+                        part_headers.split("Content-Type: ")[1].split("\r\n")[0]
+                        if "Content-Type:" in part_headers
+                        else ""
+                    )
+                    image_field = {
+                        "filename": filename_match,
+                        "type": content_type_match,
+                        "file": part_body,
+                    }
 
         # Extract user_id from the form data to know where to save the uploaded image
-        user_id = form.getvalue("user_id")
+        user_id = form_data.get("user_id")
         if not user_id:
             return self.response(
                 json.dumps({"error": "user_id is required"}),
@@ -555,24 +588,22 @@ class JSONServer(HandleRequests):
             )
 
         # Ensure an image file was included in the form data
-        if "image" not in form:
+        if image_field is None:
             return self.response(
                 json.dumps({"error": "image file is required"}),
                 status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
             )
 
-        image_field = form["image"]
-
         # Ensure a file was selected for upload (filename should not be empty)
-        if not getattr(image_field, "filename", None):
+        if not image_field.get("filename"):
             return self.response(
                 json.dumps({"error": "No file selected"}),
                 status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
             )
 
         # Extract the original filename and MIME type for validation and storage
-        original_filename = image_field.filename
-        mime_type = image_field.type or ""
+        original_filename = image_field["filename"]
+        mime_type = image_field["type"] or ""
 
         # Validate the uploaded file's MIME type and size before saving
         allowed_types = {
@@ -592,7 +623,7 @@ class JSONServer(HandleRequests):
             )
 
         # Validate file size. I've set this to be 5 MB, but you can adjust as needed.
-        file_bytes = image_field.file.read()
+        file_bytes = image_field["file"]
         max_size = 5 * 1024 * 1024
         if len(file_bytes) > max_size:
             return self.response(
