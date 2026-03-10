@@ -180,3 +180,14 @@ INSERT INTO "PostReactions" ("user_id", "reaction_id", "post_id") VALUES (1, 2, 
 INSERT INTO "PostReactions" ("user_id", "reaction_id", "post_id") VALUES (2, 3, 1);
 INSERT INTO "PostReactions" ("user_id", "reaction_id", "post_id") VALUES (1, 1, 2);
 --End of Statements for Ticket #38
+
+-- Create UserProfileImages table to store metadata about uploaded profile images
+CREATE TABLE UserProfileImages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  image_url TEXT NOT NULL,
+  original_filename TEXT,
+  mime_type TEXT,
+  created_on TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(user_id) REFERENCES Users(id)
+);
