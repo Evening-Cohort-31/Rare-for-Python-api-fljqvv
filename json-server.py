@@ -7,12 +7,12 @@ import mimetypes
 from pathlib import Path
 from urllib.parse import unquote
 import uuid
-from email.parser import BytesParser
-from email.message import EmailMessage
 
 from http.server import HTTPServer
 from helpers import is_valid_url
 
+from http.server import HTTPServer
+from socketserver import ThreadingMixIn
 
 # Add your imports below this line
 
@@ -719,6 +719,12 @@ class JSONServer(HandleRequests):
         return True
 
 
+class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+    """Threaded server - no methods needed here, just the class declaration"""
+
+    pass
+
+
 #
 # THE CODE BELOW THIS LINE IS NOT IMPORTANT FOR REACHING YOUR LEARNING OBJECTIVES
 #
@@ -726,7 +732,7 @@ def main():
     """Starts the server on port 8088"""
     host = ""
     port = 8088
-    HTTPServer((host, port), JSONServer).serve_forever()
+    ThreadedHTTPServer((host, port), JSONServer).serve_forever()
 
 
 if __name__ == "__main__":
