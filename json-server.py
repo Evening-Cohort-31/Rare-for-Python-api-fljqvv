@@ -211,12 +211,6 @@ class JSONServer(HandleRequests):
                     post_id = url["query_params"]["post_id"][0]
                 response_body = get_all_postreactions(post_id)
                 return self.response(response_body, status.HTTP_200_SUCCESS.value)
-            
-        # Endpoint: GET /subscriptions
-        elif url["requested_resource"] == "subscriptions":
-            if url["pk"] == 0:
-                response_body = get_all_subscriptions()
-                return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
         elif url["requested_resource"] == "avatars":
             # Endpoint: GET /avatars
@@ -234,19 +228,6 @@ class JSONServer(HandleRequests):
         elif url["requested_resource"] == "subscriptions":
             if url["pk"] == 0:
                 response_body = get_all_subscriptions()
-                return self.response(response_body, status.HTTP_200_SUCCESS.value)
-
-        elif url["requested_resource"] == "avatars":
-            # Endpoint: GET /avatars
-            if url["pk"] == 0:
-                response_body = get_all_avatars()
-                return self.response(response_body, status.HTTP_200_SUCCESS.value)
-
-        elif url["requested_resource"] == "profile-images":
-            # Endpoint: GET /profile-images?user_id=<id>
-            if "user_id" in url["query_params"]:
-                user_id = url["query_params"]["user_id"][0]
-                response_body = get_all_profile_images(user_id)
                 return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
         else:
