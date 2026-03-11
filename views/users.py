@@ -147,10 +147,26 @@ def update_user(user_id, updated_user):
         conn.row_factory = sqlite3.Row
         db_cursor = conn.cursor()
 
+        # Guard against removing the last admin
+        requesting_demotion = not updated_user.get("is_staff", False)
+        if requesting_demotion:
+            db_cursor.execute(
+                "SELECT is_staff FROM Users WHERE id = ?", (user_id,)
+            )
+            current_user = db_cursor.fetchone()
+            if current_user and current_user["is_staff"]:
+                db_cursor.execute(
+                    "SELECT COUNT(*) as admin_count FROM Users WHERE is_staff = 1"
+                )
+                if db_cursor.fetchone()["admin_count"] <= 1:
+                    return json.dumps(
+                        {"error": "Cannot remove the last admin."}
+                    )
+
         db_cursor.execute(
             """
             UPDATE Users
-            SET 
+            SET
                 first_name = ?, 
                 last_name = ?, 
                 username = ?, 
