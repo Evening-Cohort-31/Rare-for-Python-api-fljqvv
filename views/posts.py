@@ -34,7 +34,6 @@ def get_all_posts(query_params):
                 FROM Posts p
                 JOIN Users u ON p.user_id = u.id
                 LEFT JOIN Categories c ON p.category_id = c.id
-                WHERE p.approved = 1
                 AND p.publication_date <= datetime('now')
                 ORDER BY p.publication_date DESC
             """
@@ -215,7 +214,7 @@ def create_post(post):
         db_cursor.execute(
             """
             INSERT INTO Posts (user_id, category_id, title, publication_date, image_url, content, approved)
-            VALUES (?, ?, ?, ?, ?, ?, 1)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
             (
                 post["user_id"],
@@ -224,6 +223,8 @@ def create_post(post):
                 datetime.now().isoformat(),
                 post["image_url"],
                 post["content"],
+                post["approved"],
+
             ),
         )
 
