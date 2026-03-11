@@ -200,7 +200,7 @@ CREATE TABLE "DemotionQueue" (
 );
 
 INSERT INTO "Users" ("first_name", "last_name", "email", "bio", "username", "password", "profile_image_url", "created_on", "active", "is_staff")
-VALUES ('Erin', 'Telfer', 'erin.telfer@example.com', 'Tech enthusiast and community builder.', 'ErinT', 'password123', 'https://picsum.photos/200', '2026-03-10', 1, 1);
+VALUES ('Erin', 'Telfer', 'erin.telfer@example.com', 'Tech enthusiast and community builder.', 'PinballStar', 'password123', 'https://picsum.photos/200', '2026-03-10', 1, 1);
 
 INSERT INTO "Users" ("first_name", "last_name", "email", "bio", "username", "password", "profile_image_url", "created_on", "active", "is_staff")
 VALUES ('Val', 'Freeman', 'val.freeman@example.com', 'Passionate writer and platform advocate.', 'ValF', 'password123', 'https://picsum.photos/200', '2026-03-10', 1, 1);
