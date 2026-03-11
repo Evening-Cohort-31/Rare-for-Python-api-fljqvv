@@ -93,6 +93,12 @@ class JSONServer(HandleRequests):
                 response_body = get_demotion_queue(
                     {"id": [url["pk"]], **url["query_params"]}
                 )
+            # Supported Endpoints:
+            # GET /demotionqueue
+            # GET /demotionqueue?target_admin_id=<id>
+            # GET /demotionqueue?initiator_id=<admin_id>
+            # GET /demotionqueue?status=pending
+            # GET /demotionqueue?target_admin_id=<id>&status=pending, etc.
             else:
                 response_body = get_demotion_queue(url["query_params"])
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
@@ -346,7 +352,8 @@ class JSONServer(HandleRequests):
         elif url["requested_resource"] == "demotionqueue" and url["pk"] != 0:
             response_body = update_demotion_queue_entry(url["pk"], put_body)
             parsed = json.loads(response_body)
-            # Check if response contains an error from not finding the entry to update or from trying to approve when only one admin exists
+            # Check if response contains an error from not finding the entry to update
+            # or from trying to approve when only one admin exists
             if "error" in parsed:
                 return self.response(
                     response_body,
