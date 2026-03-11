@@ -3,31 +3,24 @@
 import sqlite3
 import json
 from datetime import datetime
+from .demotionqueue_helpers import (
+    build_demotion_queue_query,
+    build_demotion_queue_object,
+)
 
 
-def get_demotion_queue_by_target_id_status_pending(query_params):
-    """Get all pending demotion queue entries for a given target admin id"""
-
-    target_id = query_params.get("target_id", [None])[0]
-
-    if target_id is None:
-        return json.dumps({"error": "target_id query parameter is required"})
+def get_demotion_queue(query_params):
+    """Get demotion queue entries, optionally filtered by query params."""
 
     with sqlite3.connect("./db.sqlite3") as conn:
         conn.row_factory = sqlite3.Row
         db_cursor = conn.cursor()
 
-        db_cursor.execute(
-            """
-            SELECT *
-            FROM DemotionQueue
-            WHERE target_admin_id = ? AND status = 'pending'
-            """,
-            (target_id,),
-        )
+        query, params = build_demotion_queue_query(query_params)
+        db_cursor.execute(query, params)
 
-        demotion_queue_row_data = db_cursor.fetchall()
-        demotion_queue_entries = [dict(row) for row in demotion_queue_row_data]
+        row_data = db_cursor.fetchall()
+        demotion_queue_entries = [build_demotion_queue_object(row) for row in row_data]
 
     return json.dumps(demotion_queue_entries)
 
@@ -208,23 +201,47 @@ def update_demotion_queue_entry(entry_id, request_body):
     )
 
 
-def delete_demotion_queue_entry(entry_id):
-    """Delete a demotion queue entry if status is still pending"""
+def delete_demotion_queue_entry(entry_id, current_admin_id):
+    """Delete a pending demotion queue entry only if the current admin initiated it."""
 
     with sqlite3.connect("./db.sqlite3") as conn:
+        conn.row_factory = sqlite3.Row
         db_cursor = conn.cursor()
+
+        # First, verify the entry exists
+        db_cursor.execute(
+            """
+            SELECT id, initiator_id, status
+            FROM DemotionQueue
+            WHERE id = ?
+            """,
+            (entry_id,),
+        )
+        entry = db_cursor.fetchone()
+
+        if not entry:
+            return json.dumps({"error": "Demotion queue entry not found."})
+
+        # Only pending requests can be canceled
+        if entry["status"] != "pending":
+            return json.dumps(
+                {"error": "Only pending demotion requests can be canceled."}
+            )
+
+        # Only the initiator can cancel their own request
+        if entry["initiator_id"] != current_admin_id:
+            return json.dumps(
+                {"error": "Only the initiating admin can cancel this demotion request."}
+            )
 
         db_cursor.execute(
             """
             DELETE FROM DemotionQueue
-            WHERE id = ? AND status = 'pending'
+            WHERE id = ?
             """,
             (entry_id,),
         )
 
-        if db_cursor.rowcount == 0:
-            return json.dumps({"error": "Entry not found or not in pending status."})
-
         conn.commit()
 
-    return json.dumps({"id": entry_id})
+    return json.dumps({"id": entry_id, "message": "Demotion request canceled."})

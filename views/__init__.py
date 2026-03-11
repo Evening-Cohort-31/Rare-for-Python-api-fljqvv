@@ -47,7 +47,7 @@ from .postreactions import (
 from .reactions import get_all_reactions
 
 from .demotionqueue import (
-    get_demotion_queue_by_target_id_status_pending,
+    get_demotion_queue,
     create_demotion_queue_entry,
     update_demotion_queue_entry,
     delete_demotion_queue_entry,

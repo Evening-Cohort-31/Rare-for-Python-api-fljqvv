@@ -37,7 +37,7 @@ from views import (
     get_all_reactions,
     update_comment,
     update_tag,
-    get_demotion_queue_by_target_id_status_pending,
+    get_demotion_queue,
     create_demotion_queue_entry,
     update_demotion_queue_entry,
     delete_demotion_queue_entry,
@@ -86,14 +86,16 @@ class JSONServer(HandleRequests):
 
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
-        elif url["requested_resource"] == "demotionQueue":
+        elif url["requested_resource"] == "demotionqueue":
 
-            # Endpoint: GET /demotionQueue?target_id=<id>&status=pending
-            if "target_id" in url["query_params"]:
-                response_body = get_demotion_queue_by_target_id_status_pending(
-                    url["query_params"]
+            # Endpoint: GET /demotionqueue/<id>
+            if url["pk"] != 0:
+                response_body = get_demotion_queue(
+                    {"id": [url["pk"]], **url["query_params"]}
                 )
-                return self.response(response_body, status.HTTP_200_SUCCESS.value)
+            else:
+                response_body = get_demotion_queue(url["query_params"])
+            return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
         elif url["requested_resource"] == "posts":
 
@@ -224,8 +226,8 @@ class JSONServer(HandleRequests):
             response_body = login_user(post_body)
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
-        # Endpoint: POST /demotionQueue
-        elif url["requested_resource"] == "demotionQueue":
+        # Endpoint: POST /demotionqueue
+        elif url["requested_resource"] == "demotionqueue":
             response_body = create_demotion_queue_entry(post_body)
             parsed = json.loads(response_body)
 
@@ -340,8 +342,8 @@ class JSONServer(HandleRequests):
 
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
-        # Endpoint: PUT /demotionQueue/<id>
-        elif url["requested_resource"] == "demotionQueue" and url["pk"] != 0:
+        # Endpoint: PUT /demotionqueue/<id>
+        elif url["requested_resource"] == "demotionqueue" and url["pk"] != 0:
             response_body = update_demotion_queue_entry(url["pk"], put_body)
             parsed = json.loads(response_body)
             # Check if response contains an error from not finding the entry to update or from trying to approve when only one admin exists
@@ -506,10 +508,17 @@ class JSONServer(HandleRequests):
                     status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
                 )
 
-        # Endpoint: DELETE /demotionQueue/<id>
-        elif url["requested_resource"] == "demotionQueue":
+        # Endpoint: DELETE /demotionqueue/<id>?initiator_id=<admin_id>
+        elif url["requested_resource"] == "demotionqueue":
             if pk != 0:
-                delete_body = delete_demotion_queue_entry(pk)
+                initiator_id_param = url["query_params"].get("initiator_id")
+                if not initiator_id_param:
+                    return self.response(
+                        json.dumps({"error": "An initiator_id is required."}),
+                        status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+                    )
+                initiator_id = int(initiator_id_param[0])
+                delete_body = delete_demotion_queue_entry(pk, initiator_id)
                 parsed = json.loads(delete_body)
                 if "error" in parsed:
                     return self.response(
