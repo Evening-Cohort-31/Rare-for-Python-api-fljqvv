@@ -180,3 +180,27 @@ INSERT INTO "PostReactions" ("user_id", "reaction_id", "post_id") VALUES (1, 2, 
 INSERT INTO "PostReactions" ("user_id", "reaction_id", "post_id") VALUES (2, 3, 1);
 INSERT INTO "PostReactions" ("user_id", "reaction_id", "post_id") VALUES (1, 1, 2);
 --End of Statements for Ticket #38
+
+-- Standardizing the DemotionQueue table by adding a status, created_on, and completed_on columns to track the status and timing of demotion actions more effectively. Also, we change the key "admin_id" to "initiator_id" to better reflect that this user is the one initiating the demotion, and "approver_one_id" to "approver_id" for clarity and consistency.
+-- This will allow for better management and querying of the demotion queue.
+DROP TABLE IF EXISTS "DemotionQueue";
+
+CREATE TABLE "DemotionQueue" (
+  "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+  "action" TEXT NOT NULL,
+  "target_admin_id" INTEGER NOT NULL,
+  "initiator_id" INTEGER NOT NULL,
+  "approver_id" INTEGER,
+  "status" TEXT NOT NULL DEFAULT 'pending',
+  "created_on" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "completed_on" TEXT,
+  FOREIGN KEY("target_admin_id") REFERENCES "Users"("id"),
+  FOREIGN KEY("initiator_id") REFERENCES "Users"("id"),
+  FOREIGN KEY("approver_id") REFERENCES "Users"("id")
+);
+
+INSERT INTO "Users" ("first_name", "last_name", "email", "bio", "username", "password", "profile_image_url", "created_on", "active", "is_staff")
+VALUES ('Erin', 'Telfer', 'erin.telfer@example.com', 'Tech enthusiast and community builder.', 'ErinT', 'password123', 'https://picsum.photos/200', '2026-03-10', 1, 1);
+
+INSERT INTO "Users" ("first_name", "last_name", "email", "bio", "username", "password", "profile_image_url", "created_on", "active", "is_staff")
+VALUES ('Val', 'Freeman', 'val.freeman@example.com', 'Passionate writer and platform advocate.', 'ValF', 'password123', 'https://picsum.photos/200', '2026-03-10', 1, 1);

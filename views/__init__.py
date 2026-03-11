@@ -23,8 +23,6 @@ from .categories import (
     delete_category,
 )
 
-# Ticket #21 - Export get_comments_by_post_id so json-server.py can use it to handle GET /comments?post_id=<id>
-
 from .comments import (
     get_comments_by_post_id,
     create_comment,
@@ -47,3 +45,10 @@ from .postreactions import (
 )
 
 from .reactions import get_all_reactions
+
+from .demotionqueue import (
+    get_demotion_queue_by_target_id_status_pending,
+    create_demotion_queue_entry,
+    update_demotion_queue_entry,
+    delete_demotion_queue_entry,
+)

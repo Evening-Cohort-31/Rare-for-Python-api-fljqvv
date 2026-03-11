@@ -37,6 +37,10 @@ from views import (
     get_all_reactions,
     update_comment,
     update_tag,
+    get_demotion_queue_by_target_id_status_pending,
+    create_demotion_queue_entry,
+    update_demotion_queue_entry,
+    delete_demotion_queue_entry,
 )
 
 
@@ -81,6 +85,15 @@ class JSONServer(HandleRequests):
                 response_body = get_all_users()
 
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
+        elif url["requested_resource"] == "demotionQueue":
+
+            # Endpoint: GET /demotionQueue?target_id=<id>&status=pending
+            if "target_id" in url["query_params"]:
+                response_body = get_demotion_queue_by_target_id_status_pending(
+                    url["query_params"]
+                )
+                return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
         elif url["requested_resource"] == "posts":
 
@@ -211,6 +224,20 @@ class JSONServer(HandleRequests):
             response_body = login_user(post_body)
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
+        # Endpoint: POST /demotionQueue
+        elif url["requested_resource"] == "demotionQueue":
+            response_body = create_demotion_queue_entry(post_body)
+            parsed = json.loads(response_body)
+
+            # Check if response contains an error from not finding the post or reaction
+            if "error" in parsed:
+                return self.response(
+                    response_body,
+                    status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                )
+
+            return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
+
         # Endpoint: POST /register
         elif url["requested_resource"] == "register":
             response_body = create_user(post_body)
@@ -311,6 +338,18 @@ class JSONServer(HandleRequests):
                     status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
                 )
 
+            return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
+        # Endpoint: PUT /demotionQueue/<id>
+        elif url["requested_resource"] == "demotionQueue" and url["pk"] != 0:
+            response_body = update_demotion_queue_entry(url["pk"], put_body)
+            parsed = json.loads(response_body)
+            # Check if response contains an error from not finding the entry to update or from trying to approve when only one admin exists
+            if "error" in parsed:
+                return self.response(
+                    response_body,
+                    status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                )
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
         elif url["requested_resource"] == "postreactions":
@@ -464,6 +503,26 @@ class JSONServer(HandleRequests):
             else:
                 return self.response(
                     json.dumps({"error": "A comment id is required."}),
+                    status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+                )
+
+        # Endpoint: DELETE /demotionQueue/<id>
+        elif url["requested_resource"] == "demotionQueue":
+            if pk != 0:
+                delete_body = delete_demotion_queue_entry(pk)
+                parsed = json.loads(delete_body)
+                if "error" in parsed:
+                    return self.response(
+                        delete_body,
+                        status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                    )
+                else:
+                    return self.response(
+                        delete_body, status.HTTP_204_SUCCESS_NO_RESPONSE_BODY.value
+                    )
+            else:
+                return self.response(
+                    json.dumps({"error": "A demotion queue entry id is required."}),
                     status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
                 )
 
