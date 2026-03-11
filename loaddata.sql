@@ -209,15 +209,30 @@ CREATE TABLE "DemotionQueue" (
   FOREIGN KEY("approver_id") REFERENCES "Users"("id")
 );
 
+-- Area for resetting Users table and seeding new users for testing demotion queue functionality
 DROP TABLE IF EXISTS "Users";
+
+CREATE TABLE "Users" (
+  "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+  "first_name" varchar,
+  "last_name" varchar,
+  "email" varchar,
+  "bio" varchar,
+  "username" varchar,
+  "password" varchar,
+  "profile_image_url" varchar,
+  "created_on" date,
+  "active" bit,
+  "is_staff" bit NOT NULL DEFAULT 0
+);
 
 INSERT INTO "Users" ("first_name", "last_name", "email", "bio", "username", "password", "profile_image_url", "created_on", "active", "is_staff")
 VALUES ('Dale', 'Hobbs', 'dale.hobbs@example.com', 'Administrator and community manager.', 'ssj4mathgenius', 'password123', 'https://picsum.photos/200', '2026-03-10', 1, 1);
 
 INSERT INTO "Users" ("first_name", "last_name", "email", "bio", "username", "password", "profile_image_url", "created_on", "active", "is_staff")
-VALUES ('Erin', 'Telfer', 'erin.telfer@example.com', 'Tech enthusiast and community builder.', 'PinballStar', 'password123', 'https://picsum.photos/200', '2026-03-10', 1, 1);
-
-INSERT INTO "Users" ("first_name", "last_name", "email", "bio", "username", "password", "profile_image_url", "created_on", "active", "is_staff")
 VALUES ('Val', 'Freeman', 'val.freeman@example.com', 'Passionate writer and platform advocate.', 'ValF', 'password123', 'https://picsum.photos/200', '2026-03-10', 1, 0);
 
 INSERT INTO "DemotionQueue" ("action", "target_admin_id", "initiator_id", "approver_id", "status") VALUES ('demote', 1, 2, NULL, 'pending');
+
+INSERT INTO "Users" ("first_name", "last_name", "email", "bio", "username", "password", "profile_image_url", "created_on", "active", "is_staff")
+VALUES ('Erin', 'Telfer', 'erin.telfer@example.com', 'Tech enthusiast and community builder.', 'PinballStar', 'password123', 'https://picsum.photos/200', '2026-03-10', 1, 1);
