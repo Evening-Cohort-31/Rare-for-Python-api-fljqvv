@@ -248,6 +248,10 @@ CREATE TABLE "PostTags" (
   UNIQUE(post_id, tag_id)
 );
 
+-- Create indexes on post_id and tag_id in PostTags table to optimize queries filtering by these columns, which is common when retrieving tags for a post or posts for a tag
+CREATE INDEX idx_posttags_post_id ON PostTags(post_id);
+CREATE INDEX idx_posttags_tag_id ON PostTags(tag_id);
+
 -- Seed PostTags with sample data
 -- Post 1 tagged with 'JavaScript' and 'SQL', Post 2 tagged with 'JavaScript', Post 3 tagged with 'Data Science', Post 4 tagged with 'JavaScript'
 INSERT INTO "PostTags" ("post_id", "tag_id") VALUES (1, 1);
@@ -255,7 +259,3 @@ INSERT INTO "PostTags" ("post_id", "tag_id") VALUES (1, 2);
 INSERT INTO "PostTags" ("post_id", "tag_id") VALUES (2, 1);
 INSERT INTO "PostTags" ("post_id", "tag_id") VALUES (3, 3);
 INSERT INTO "PostTags" ("post_id", "tag_id") VALUES (4, 1);
-
--- Create indexes on post_id and tag_id in PostTags table to optimize queries filtering by these columns, which is common when retrieving tags for a post or posts for a tag
-CREATE INDEX idx_posttags_post_id ON PostTags(post_id);
-CREATE INDEX idx_posttags_tag_id ON PostTags(tag_id);
