@@ -88,7 +88,6 @@ CREATE TABLE "Categories" (
 );
 
 INSERT INTO Categories ('label') VALUES ('News');
-INSERT INTO Tags ('label') VALUES ('JavaScript');
 INSERT INTO Reactions ('label', 'image_url') VALUES ('happy', 'https://pngtree.com/so/happy');
 
 INSERT INTO "Posts" ("user_id", "category_id", "title", "publication_date", "image_url", "content", "approved")
@@ -112,9 +111,6 @@ VALUES
 -- Show All Posts
 SELECT * FROM Posts;
 
--- Delete and recreate Comments table to add publication_date column with default value
-DROP TABLE IF EXISTS "Comments";
-
 -- Recreate Comments table with publication_date column
 ALTER TABLE Comments ADD COLUMN publication_date date DEFAULT (date('now'));
 
@@ -131,9 +127,11 @@ INSERT INTO Comments (post_id, author_id, content) VALUES (3, 2, 'Can you elabor
 INSERT INTO Comments (post_id, author_id, content) VALUES (3, 4, 'I had a similar experience, great write-up.');
 INSERT INTO Comments (post_id, author_id, content) VALUES (3, 3, 'Looking forward to more posts like this!');
 
-INSERT INTO Tags (label) VALUES ('Python');
-INSERT INTO Tags (label) VALUES ('SQL');
-INSERT INTO Tags (label) VALUES ('Data Science');
+-- Create tags
+INSERT INTO Tags ('label') VALUES ('JavaScript');
+INSERT INTO Tags ('label') VALUES ('Python');
+INSERT INTO Tags ('label') VALUES ('SQL');
+INSERT INTO Tags ('label') VALUES ('Data Science');
 
 -- Add is_staff column to Users table, defaulting all existing users to false (0)
 ALTER TABLE "Users" ADD COLUMN "is_staff" bit NOT NULL DEFAULT 0;
