@@ -236,3 +236,28 @@ INSERT INTO "DemotionQueue" ("action", "target_admin_id", "initiator_id", "appro
 
 INSERT INTO "Users" ("first_name", "last_name", "email", "bio", "username", "password", "profile_image_url", "created_on", "active", "is_staff")
 VALUES ('Erin', 'Telfer', 'erin.telfer@example.com', 'Tech enthusiast and community builder.', 'PinballStar', 'password123', 'https://picsum.photos/200', '2026-03-10', 1, 1);
+
+-- Area for resetting PostTags table and seeding new data for testing post-tag relationships and deletion functionality
+DROP TABLE IF EXISTS "PostTags";
+
+CREATE TABLE "PostTags" (
+  "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+  "post_id" INTEGER NOT NULL,
+  "tag_id" INTEGER NOT NULL,
+  "created_on" TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(`post_id`) REFERENCES `Posts`(`id`),
+  FOREIGN KEY(`tag_id`) REFERENCES `Tags`(`id`),
+  UNIQUE(post_id, tag_id)
+);
+
+-- Seed PostTags with sample data
+-- Post 1 tagged with 'JavaScript' and 'SQL', Post 2 tagged with 'JavaScript', Post 3 tagged with 'Data Science', Post 4 tagged with 'JavaScript'
+INSERT INTO "PostTags" ("post_id", "tag_id") VALUES (1, 1);
+INSERT INTO "PostTags" ("post_id", "tag_id") VALUES (1, 2);
+INSERT INTO "PostTags" ("post_id", "tag_id") VALUES (2, 1);
+INSERT INTO "PostTags" ("post_id", "tag_id") VALUES (3, 3);
+INSERT INTO "PostTags" ("post_id", "tag_id") VALUES (4, 1);
+
+-- Create indexes on post_id and tag_id in PostTags table to optimize queries filtering by these columns, which is common when retrieving tags for a post or posts for a tag
+CREATE INDEX idx_posttags_post_id ON PostTags(post_id);
+CREATE INDEX idx_posttags_tag_id ON PostTags(tag_id);

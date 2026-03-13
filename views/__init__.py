@@ -60,3 +60,5 @@ from .subscriptions import (
     get_all_subscriptions,
     delete_subscription,
 )
+
+from .posttags import delete_posttag

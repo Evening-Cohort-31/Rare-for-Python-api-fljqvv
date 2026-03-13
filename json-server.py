@@ -57,6 +57,7 @@ from views import (
     create_subscription,
     get_all_subscriptions,
     delete_subscription,
+    delete_posttag,
 )
 
 
@@ -604,6 +605,26 @@ class JSONServer(HandleRequests):
             else:
                 return self.response(
                     json.dumps({"error": "A demotion queue entry id is required."}),
+                    status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+                )
+
+        # Endpoint: DELETE /posttags/<id>
+        elif url["requested_resource"] == "posttags":
+            if pk != 0:
+                delete_body = delete_posttag(pk)
+                parsed = json.loads(delete_body)
+                if "error" in parsed:
+                    return self.response(
+                        delete_body,
+                        status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                    )
+                else:
+                    return self.response(
+                        delete_body, status.HTTP_204_SUCCESS_NO_RESPONSE_BODY.value
+                    )
+            else:
+                return self.response(
+                    json.dumps({"error": "A posttag id is required."}),
                     status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
                 )
 
