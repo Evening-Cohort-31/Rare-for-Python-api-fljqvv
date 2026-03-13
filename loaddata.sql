@@ -248,7 +248,8 @@ CREATE TABLE "PostTags" (
   UNIQUE(post_id, tag_id)
 );
 
--- Create indexes on post_id and tag_id in PostTags table to optimize queries filtering by these columns, which is common when retrieving tags for a post or posts for a tag
+-- Create indexes on post_id and tag_id in PostTags table to optimize queries filtering by these columns, 
+-- which is common when retrieving tags for a post or posts for a tag
 CREATE INDEX idx_posttags_post_id ON PostTags(post_id);
 CREATE INDEX idx_posttags_tag_id ON PostTags(tag_id);
 
