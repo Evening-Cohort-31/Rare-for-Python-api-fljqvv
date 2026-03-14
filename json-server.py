@@ -380,7 +380,7 @@ class JSONServer(HandleRequests):
             if error:
                 return error
 
-            if not is_valid_url(put_body["image_url"]):
+            if put_body["image_url"] and not is_valid_url(put_body["image_url"]):
                 return self.response(
                     json.dumps(
                         {"error": "image_url must be a valid http or https URL."}

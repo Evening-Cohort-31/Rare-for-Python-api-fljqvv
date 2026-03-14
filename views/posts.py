@@ -34,7 +34,6 @@ def get_all_posts(query_params):
                 FROM Posts p
                 JOIN Users u ON p.user_id = u.id
                 LEFT JOIN Categories c ON p.category_id = c.id
-                WHERE p.approved = 1
                 AND p.publication_date <= datetime('now')
                 ORDER BY p.publication_date DESC
             """
@@ -72,7 +71,7 @@ def get_all_posts(query_params):
                 "publication_date": row["publication_date"],
                 "image_url": row["image_url"],
                 "content": row["content"],
-                "approved": row["approved"],
+                "approved": bool(row["approved"]),
                 "author": row["author"],
             }
 
@@ -185,7 +184,7 @@ def get_posts_by_user_id(user_id, query_params):
                 "publication_date": row["publication_date"],
                 "image_url": row["image_url"],
                 "content": row["content"],
-                "approved": row["approved"],
+                "approved": bool(row["approved"]),
                 "author": row["author"],
             }
 
@@ -215,7 +214,7 @@ def create_post(post):
         db_cursor.execute(
             """
             INSERT INTO Posts (user_id, category_id, title, publication_date, image_url, content, approved)
-            VALUES (?, ?, ?, ?, ?, ?, 1)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
             (
                 post["user_id"],
@@ -224,6 +223,8 @@ def create_post(post):
                 datetime.now().isoformat(),
                 post["image_url"],
                 post["content"],
+                bool(post["approved"]),
+
             ),
         )
 
@@ -260,7 +261,7 @@ def update_post(post_id, post_data):
                     post_data["publication_date"],
                     post_data["image_url"],
                     post_data["content"],
-                    post_data["approved"],
+                    bool(post_data["approved"]),
                     post_id,
                 ),
             )
