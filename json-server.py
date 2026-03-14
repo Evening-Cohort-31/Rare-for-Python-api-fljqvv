@@ -57,6 +57,10 @@ from views import (
     create_subscription,
     get_all_subscriptions,
     delete_subscription,
+    get_all_posttags,
+    get_single_posttag,
+    create_posttag,
+    delete_posttag,
 )
 
 
@@ -122,6 +126,20 @@ class JSONServer(HandleRequests):
             else:
                 response_body = get_demotion_queue(url["query_params"])
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
+        elif url["requested_resource"] == "posttags":
+            if url["pk"] != 0:
+                response_body = get_single_posttag(url["pk"], url["query_params"])
+                parsed = json.loads(response_body)
+                if "error" in parsed:
+                    return self.response(
+                        response_body,
+                        status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                    )
+                return self.response(response_body, status.HTTP_200_SUCCESS.value)
+            else:
+                response_body = get_all_posttags(url["query_params"])
+                return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
         elif url["requested_resource"] == "posts":
 
@@ -316,6 +334,20 @@ class JSONServer(HandleRequests):
         # Endpoint: POST /subscriptions
         elif url["requested_resource"] == "subscriptions":
             response_body = create_subscription(post_body)
+            return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
+
+        # Endpoint: POST /posttags
+        elif url["requested_resource"] == "posttags":
+            response_body = create_posttag(post_body)
+            parsed = json.loads(response_body)
+
+            # Check if response contains an error from not finding the post or reaction
+            if "error" in parsed:
+                return self.response(
+                    response_body,
+                    status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                )
+
             return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
 
         else:
@@ -604,6 +636,26 @@ class JSONServer(HandleRequests):
             else:
                 return self.response(
                     json.dumps({"error": "A demotion queue entry id is required."}),
+                    status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+                )
+
+        # Endpoint: DELETE /posttags/<id>
+        elif url["requested_resource"] == "posttags":
+            if pk != 0:
+                delete_body = delete_posttag(pk)
+                parsed = json.loads(delete_body)
+                if "error" in parsed:
+                    return self.response(
+                        delete_body,
+                        status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                    )
+                else:
+                    return self.response(
+                        delete_body, status.HTTP_204_SUCCESS_NO_RESPONSE_BODY.value
+                    )
+            else:
+                return self.response(
+                    json.dumps({"error": "A posttag id is required."}),
                     status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
                 )
 

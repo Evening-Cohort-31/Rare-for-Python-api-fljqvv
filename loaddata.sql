@@ -88,7 +88,6 @@ CREATE TABLE "Categories" (
 );
 
 INSERT INTO Categories ('label') VALUES ('News');
-INSERT INTO Tags ('label') VALUES ('JavaScript');
 INSERT INTO Reactions ('label', 'image_url') VALUES ('happy', 'https://pngtree.com/so/happy');
 
 INSERT INTO "Posts" ("user_id", "category_id", "title", "publication_date", "image_url", "content", "approved")
@@ -112,9 +111,6 @@ VALUES
 -- Show All Posts
 SELECT * FROM Posts;
 
--- Delete and recreate Comments table to add publication_date column with default value
-DROP TABLE IF EXISTS "Comments";
-
 -- Recreate Comments table with publication_date column
 ALTER TABLE Comments ADD COLUMN publication_date date DEFAULT (date('now'));
 
@@ -131,9 +127,11 @@ INSERT INTO Comments (post_id, author_id, content) VALUES (3, 2, 'Can you elabor
 INSERT INTO Comments (post_id, author_id, content) VALUES (3, 4, 'I had a similar experience, great write-up.');
 INSERT INTO Comments (post_id, author_id, content) VALUES (3, 3, 'Looking forward to more posts like this!');
 
-INSERT INTO Tags (label) VALUES ('Python');
-INSERT INTO Tags (label) VALUES ('SQL');
-INSERT INTO Tags (label) VALUES ('Data Science');
+-- Create tags
+INSERT INTO Tags ('label') VALUES ('JavaScript');
+INSERT INTO Tags ('label') VALUES ('Python');
+INSERT INTO Tags ('label') VALUES ('SQL');
+INSERT INTO Tags ('label') VALUES ('Data Science');
 
 -- Add is_staff column to Users table, defaulting all existing users to false (0)
 ALTER TABLE "Users" ADD COLUMN "is_staff" bit NOT NULL DEFAULT 0;
@@ -236,3 +234,29 @@ INSERT INTO "DemotionQueue" ("action", "target_admin_id", "initiator_id", "appro
 
 INSERT INTO "Users" ("first_name", "last_name", "email", "bio", "username", "password", "profile_image_url", "created_on", "active", "is_staff")
 VALUES ('Erin', 'Telfer', 'erin.telfer@example.com', 'Tech enthusiast and community builder.', 'PinballStar', 'password123', 'https://picsum.photos/200', '2026-03-10', 1, 1);
+
+-- Area for resetting PostTags table and seeding new data for testing post-tag relationships and deletion functionality
+DROP TABLE IF EXISTS "PostTags";
+
+CREATE TABLE "PostTags" (
+  "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+  "post_id" INTEGER NOT NULL,
+  "tag_id" INTEGER NOT NULL,
+  "created_on" TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(`post_id`) REFERENCES `Posts`(`id`),
+  FOREIGN KEY(`tag_id`) REFERENCES `Tags`(`id`),
+  UNIQUE(post_id, tag_id)
+);
+
+-- Create indexes on post_id and tag_id in PostTags table to optimize queries filtering by these columns, 
+-- which is common when retrieving tags for a post or posts for a tag
+CREATE INDEX idx_posttags_post_id ON PostTags(post_id);
+CREATE INDEX idx_posttags_tag_id ON PostTags(tag_id);
+
+-- Seed PostTags with sample data
+-- Post 1 tagged with 'JavaScript' and 'SQL', Post 2 tagged with 'JavaScript', Post 3 tagged with 'Data Science', Post 4 tagged with 'JavaScript'
+INSERT INTO "PostTags" ("post_id", "tag_id") VALUES (1, 1);
+INSERT INTO "PostTags" ("post_id", "tag_id") VALUES (1, 2);
+INSERT INTO "PostTags" ("post_id", "tag_id") VALUES (2, 1);
+INSERT INTO "PostTags" ("post_id", "tag_id") VALUES (3, 3);
+INSERT INTO "PostTags" ("post_id", "tag_id") VALUES (4, 1);
