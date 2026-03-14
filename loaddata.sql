@@ -260,3 +260,4 @@ INSERT INTO "PostTags" ("post_id", "tag_id") VALUES (1, 2);
 INSERT INTO "PostTags" ("post_id", "tag_id") VALUES (2, 1);
 INSERT INTO "PostTags" ("post_id", "tag_id") VALUES (3, 3);
 INSERT INTO "PostTags" ("post_id", "tag_id") VALUES (4, 1);
+UPDATE users SET is_staff = 0 WHERE id = 3;
