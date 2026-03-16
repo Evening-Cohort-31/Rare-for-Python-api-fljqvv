@@ -241,7 +241,7 @@ def create_post(post):
                 datetime.now().isoformat(),
                 post["image_url"],
                 post["content"],
-                bool(post["approved"]),
+                bool(post.get("approved", 0)),
             ),
         )
 
