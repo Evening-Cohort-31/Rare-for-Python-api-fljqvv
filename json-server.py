@@ -1,12 +1,22 @@
 """Module for JSON server handling Rare API requests"""
 
 import json
+
+# imports for dealing with file uploads and serving static files
+import mimetypes
+from pathlib import Path
+from urllib.parse import unquote
+import uuid
+
 from http.server import HTTPServer
+from socketserver import ThreadingMixIn
 from helpers import is_valid_url
+
 
 # Add your imports below this line
 
 from nss_handler import HandleRequests, status
+
 from views import (
     get_all_posts,
     get_posts_by_user_id,
@@ -16,14 +26,17 @@ from views import (
     get_all_categories,
     get_category_by_id,
     create_category,
-    delete_category, # Ticket #16 - Import the function that deletes categories
+    update_category,
+    delete_category,
     update_post,
     get_comments_by_post_id,
     get_comment_by_id,
     create_comment,
+    delete_comment,  # Ticket #22 - Import the function that deletes comments
     get_all_tags,
     get_tag_by_id,
     create_tag,
+    delete_tag,  # Ticket #18 - Import the function that deletes tags
     login_user,
     create_user,
     get_all_users,
@@ -35,6 +48,20 @@ from views import (
     create_reaction,
     update_comment,
     update_tag,
+    get_demotion_queue,
+    create_demotion_queue_entry,
+    update_demotion_queue_entry,
+    delete_demotion_queue_entry,
+    get_all_avatars,
+    save_uploaded_profile_image,
+    get_all_profile_images,
+    create_subscription,
+    get_all_subscriptions,
+    delete_subscription,
+    get_all_posttags,
+    get_single_posttag,
+    create_posttag,
+    delete_posttag,
 )
 
 
@@ -43,6 +70,10 @@ class JSONServer(HandleRequests):
 
     def do_GET(self):  # pylint: disable=invalid-name
         """Handle GET requests from a client"""
+
+        # Serve static assets first (avatars, uploads, etc.)
+        if self.serve_static_file(self.path):
+            return
 
         response_body = ""
         # Example: self.path = "/posts/3?user_id=1&_expand=category"
@@ -79,6 +110,37 @@ class JSONServer(HandleRequests):
                 response_body = get_all_users()
 
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
+        elif url["requested_resource"] == "demotionqueue":
+
+            # Endpoint: GET /demotionqueue/<id>
+            if url["pk"] != 0:
+                response_body = get_demotion_queue(
+                    {"id": [url["pk"]], **url["query_params"]}
+                )
+            # Supported Endpoints:
+            # GET /demotionqueue
+            # GET /demotionqueue?target_admin_id=<id>
+            # GET /demotionqueue?initiator_id=<admin_id>
+            # GET /demotionqueue?status=pending
+            # GET /demotionqueue?target_admin_id=<id>&status=pending, etc.
+            else:
+                response_body = get_demotion_queue(url["query_params"])
+            return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
+        elif url["requested_resource"] == "posttags":
+            if url["pk"] != 0:
+                response_body = get_single_posttag(url["pk"], url["query_params"])
+                parsed = json.loads(response_body)
+                if "error" in parsed:
+                    return self.response(
+                        response_body,
+                        status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                    )
+                return self.response(response_body, status.HTTP_200_SUCCESS.value)
+            else:
+                response_body = get_all_posttags(url["query_params"])
+                return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
         elif url["requested_resource"] == "posts":
 
@@ -140,7 +202,7 @@ class JSONServer(HandleRequests):
                     return self.response(
                         response_body,
                         status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
-                )
+                    )
 
                 return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
@@ -187,6 +249,24 @@ class JSONServer(HandleRequests):
                 response_body = get_all_postreactions(post_id)
                 return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
+        elif url["requested_resource"] == "avatars":
+            # Endpoint: GET /avatars
+            if url["pk"] == 0:
+                response_body = get_all_avatars()
+                return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
+        elif url["requested_resource"] == "profile-images":
+            # Endpoint: GET /profile-images?user_id=<id>
+            if "user_id" in url["query_params"]:
+                user_id = url["query_params"]["user_id"][0]
+                response_body = get_all_profile_images(user_id)
+                return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
+        elif url["requested_resource"] == "subscriptions":
+            if url["pk"] == 0:
+                response_body = get_all_subscriptions()
+                return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
         else:
             return self.response(
                 "", status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value
@@ -198,6 +278,10 @@ class JSONServer(HandleRequests):
         response_body = ""
         url = self.parse_url(self.path)
 
+        # Endpoint: POST /profile-images for handling multipart form uploads of profile images
+        if url["requested_resource"] == "profile-images":
+            return self.handle_profile_image_upload()
+
         # Get content length to read the body
         content_length = int(self.headers.get("Content-Length", 0))
         post_body = self.rfile.read(content_length)
@@ -208,6 +292,20 @@ class JSONServer(HandleRequests):
         if url["requested_resource"] == "login":
             response_body = login_user(post_body)
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
+        # Endpoint: POST /demotionqueue
+        elif url["requested_resource"] == "demotionqueue":
+            response_body = create_demotion_queue_entry(post_body)
+            parsed = json.loads(response_body)
+
+            # Check if response contains an error from not finding the post or reaction
+            if "error" in parsed:
+                return self.response(
+                    response_body,
+                    status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                )
+
+            return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
 
         # Endpoint: POST /register
         elif url["requested_resource"] == "register":
@@ -250,6 +348,25 @@ class JSONServer(HandleRequests):
             response_body = create_or_update_postreactions(post_body)
             return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
 
+        # Endpoint: POST /subscriptions
+        elif url["requested_resource"] == "subscriptions":
+            response_body = create_subscription(post_body)
+            return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
+
+        # Endpoint: POST /posttags
+        elif url["requested_resource"] == "posttags":
+            response_body = create_posttag(post_body)
+            parsed = json.loads(response_body)
+
+            # Check if response contains an error from not finding the post or reaction
+            if "error" in parsed:
+                return self.response(
+                    response_body,
+                    status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                )
+
+            return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
+
         else:
             return self.response(
                 "", status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value
@@ -280,7 +397,7 @@ class JSONServer(HandleRequests):
             if error:
                 return error
 
-            if not is_valid_url(put_body["image_url"]):
+            if put_body["image_url"] and not is_valid_url(put_body["image_url"]):
                 return self.response(
                     json.dumps(
                         {"error": "image_url must be a valid http or https URL."}
@@ -327,6 +444,19 @@ class JSONServer(HandleRequests):
 
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
+        # Endpoint: PUT /demotionqueue/<id>
+        elif url["requested_resource"] == "demotionqueue" and url["pk"] != 0:
+            response_body = update_demotion_queue_entry(url["pk"], put_body)
+            parsed = json.loads(response_body)
+            # Check if response contains an error from not finding the entry to update
+            # or from trying to approve when only one admin exists
+            if "error" in parsed:
+                return self.response(
+                    response_body,
+                    status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                )
+            return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
         elif url["requested_resource"] == "postreactions":
 
             # Endpoint: PUT /postreactions
@@ -348,6 +478,24 @@ class JSONServer(HandleRequests):
 
                 return self.response(response_body, status.HTTP_200_SUCCESS.value)
 
+        # Endpoint: PUT /categories/<id>
+        elif url["requested_resource"] == "categories" and url["pk"] != 0:
+            required_fields = ["label"]
+            error = self.validate_required_fields(put_body, required_fields)
+            if error:
+                return error
+
+            response_body = update_category(url["pk"], put_body)
+            parsed = json.loads(response_body)
+
+            if "error" in parsed:
+                return self.response(
+                    response_body,
+                    status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                )
+
+            return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
         # Endpoint: PUT /comments/<id>
         elif url["requested_resource"] == "comments" and url["pk"] != 0:
             response_body = update_comment(url["pk"], put_body)
@@ -360,7 +508,7 @@ class JSONServer(HandleRequests):
                     status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
                 )
             return self.response(response_body, status.HTTP_200_SUCCESS.value)
-        
+
         # Endpoint: PUT /tags/<id>
         elif url["requested_resource"] == "tags" and url["pk"] != 0:
             response_body = update_tag(url["pk"], put_body)
@@ -372,9 +520,8 @@ class JSONServer(HandleRequests):
                     response_body,
                     status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
                 )
-            return self.response(response_body, status.HTTP_200_SUCCESS.value)       
-        
-        
+            return self.response(response_body, status.HTTP_200_SUCCESS.value)
+
         else:
             return self.response(
                 "", status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value
@@ -413,12 +560,119 @@ class JSONServer(HandleRequests):
                 delete_body = delete_category(pk)
                 parsed = json.loads(delete_body)
                 if "error" in parsed:
-                    return self.response(delete_body, status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value)
+                    return self.response(
+                        delete_body,
+                        status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                    )
                 else:
-                    return self.response(delete_body, status.HTTP_204_SUCCESS_NO_RESPONSE_BODY.value)
+                    return self.response(
+                        delete_body, status.HTTP_204_SUCCESS_NO_RESPONSE_BODY.value
+                    )
             else:
                 return self.response(
                     json.dumps({"error": "A category id is required."}),
+                    status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+                )
+        elif url["requested_resource"] == "tags":
+            if pk != 0:
+                delete_body = delete_tag(pk)
+                parsed = json.loads(delete_body)
+                if "error" in parsed:
+                    return self.response(
+                        delete_body,
+                        status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                    )
+                else:
+                    return self.response(
+                        delete_body, status.HTTP_204_SUCCESS_NO_RESPONSE_BODY.value
+                    )
+            else:
+                return self.response(
+                    json.dumps({"error": "A tag id is required."}),
+                    status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+                )
+        elif url["requested_resource"] == "subscriptions":
+            if pk != 0:
+                delete_body = delete_subscription(pk)
+                parsed = json.loads(delete_body)
+                if "error" in parsed:
+                    return self.response(
+                        delete_body,
+                        status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                    )
+                else:
+                    return self.response(
+                        "", status.HTTP_204_SUCCESS_NO_RESPONSE_BODY.value
+                    )
+            else:
+                return self.response(
+                    json.dumps({"error": "A subscription id is required."}),
+                    status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+                )
+
+        elif url["requested_resource"] == "comments":
+            if pk != 0:
+                delete_body = delete_comment(pk)
+                parsed = json.loads(delete_body)
+                if "error" in parsed:
+                    return self.response(
+                        delete_body,
+                        status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                    )
+                else:
+                    return self.response(
+                        delete_body, status.HTTP_204_SUCCESS_NO_RESPONSE_BODY.value
+                    )
+            else:
+                return self.response(
+                    json.dumps({"error": "A comment id is required."}),
+                    status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+                )
+
+        # Endpoint: DELETE /demotionqueue/<id>?initiator_id=<admin_id>
+        elif url["requested_resource"] == "demotionqueue":
+            if pk != 0:
+                initiator_id_param = url["query_params"].get("initiator_id")
+                if not initiator_id_param:
+                    return self.response(
+                        json.dumps({"error": "An initiator_id is required."}),
+                        status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+                    )
+                initiator_id = int(initiator_id_param[0])
+                delete_body = delete_demotion_queue_entry(pk, initiator_id)
+                parsed = json.loads(delete_body)
+                if "error" in parsed:
+                    return self.response(
+                        delete_body,
+                        status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                    )
+                else:
+                    return self.response(
+                        delete_body, status.HTTP_204_SUCCESS_NO_RESPONSE_BODY.value
+                    )
+            else:
+                return self.response(
+                    json.dumps({"error": "A demotion queue entry id is required."}),
+                    status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+                )
+
+        # Endpoint: DELETE /posttags/<id>
+        elif url["requested_resource"] == "posttags":
+            if pk != 0:
+                delete_body = delete_posttag(pk)
+                parsed = json.loads(delete_body)
+                if "error" in parsed:
+                    return self.response(
+                        delete_body,
+                        status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+                    )
+                else:
+                    return self.response(
+                        delete_body, status.HTTP_204_SUCCESS_NO_RESPONSE_BODY.value
+                    )
+            else:
+                return self.response(
+                    json.dumps({"error": "A posttag id is required."}),
                     status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
                 )
 
@@ -437,6 +691,214 @@ class JSONServer(HandleRequests):
             )
         return None
 
+    def handle_profile_image_upload(self):
+        """
+        Handle multipart upload for user profile images.
+
+        Expects a multipart/form-data POST request with fields:
+                - user_id: the ID of the user uploading the image
+                - image: the image file to upload
+        Validates the file type and size, saves the file to a directory specific to the user.
+        Then generates a URL for the uploaded image, saves the metadata to the database, and
+        updates the user's profile image URL in the database.
+        """
+
+        content_type = self.headers.get("Content-Type", "")
+        # Multipart form data is required for file uploads,
+        # If the content type is not multipart/form-data, return an error
+        if "multipart/form-data" not in content_type:
+            return self.response(
+                json.dumps({"error": "Content-Type must be multipart/form-data"}),
+                status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+            )
+
+        # Parse the multipart form data manually since we need direct access to boundaries
+        content_length = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(content_length)
+
+        # Parse multipart data manually
+        boundary = content_type.split("boundary=")[1].encode()
+        parts = body.split(b"--" + boundary)
+
+        form_data = {}
+        image_field = None
+
+        for part in parts:
+            if not part or part == b"--\r\n" or part == b"--":
+                continue
+
+            headers_end = part.find(b"\r\n\r\n")
+            if headers_end == -1:
+                continue
+
+            part_headers = part[:headers_end].decode(errors="ignore")
+            part_body = part[headers_end + 4 :].rstrip(b"\r\n")
+
+            if "Content-Disposition" in part_headers:
+                if 'name="user_id"' in part_headers:
+                    form_data["user_id"] = part_body.decode()
+                elif 'name="image"' in part_headers:
+                    filename_match = (
+                        part_headers.split('filename="')[1].split('"')[0]
+                        if 'filename="' in part_headers
+                        else None
+                    )
+                    content_type_match = (
+                        part_headers.split("Content-Type: ")[1].split("\r\n")[0]
+                        if "Content-Type:" in part_headers
+                        else ""
+                    )
+                    image_field = {
+                        "filename": filename_match,
+                        "type": content_type_match,
+                        "file": part_body,
+                    }
+
+        # Extract user_id from the form data to know where to save the uploaded image
+        user_id = form_data.get("user_id")
+        if not user_id:
+            return self.response(
+                json.dumps({"error": "user_id is required"}),
+                status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+            )
+
+        # Ensure an image file was included in the form data
+        if image_field is None:
+            return self.response(
+                json.dumps({"error": "image file is required"}),
+                status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+            )
+
+        # Ensure a file was selected for upload (filename should not be empty)
+        if not image_field.get("filename"):
+            return self.response(
+                json.dumps({"error": "No file selected"}),
+                status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+            )
+
+        # Extract the original filename and MIME type for validation and storage
+        original_filename = image_field["filename"]
+        mime_type = image_field["type"] or ""
+
+        # Validate the uploaded file's MIME type and size before saving
+        allowed_types = {
+            "image/png": ".png",
+            "image/jpeg": ".jpg",
+            "image/webp": ".webp",
+            "image/gif": ".gif",
+        }
+
+        # Validate MIME type against allowed types
+        # MIME stands for "Multipurpose Internet Mail Extensions"
+        # It is a standard way to indicate the type of a file
+        if mime_type not in allowed_types:
+            return self.response(
+                json.dumps({"error": "Only PNG, JPG, WEBP, and GIF files are allowed"}),
+                status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+            )
+
+        # Validate file size. I've set this to be 5 MB, but you can adjust as needed.
+        file_bytes = image_field["file"]
+        max_size = 5 * 1024 * 1024
+        if len(file_bytes) > max_size:
+            return self.response(
+                json.dumps({"error": "File too large. Max size is 5 MB"}),
+                status.HTTP_400_CLIENT_ERROR_BAD_REQUEST_DATA.value,
+            )
+
+        # Generate a safe filename using a UUID to prevent collisions and security issues
+        file_extension = allowed_types[mime_type]
+        safe_filename = f"{uuid.uuid4()}{file_extension}"
+
+        # Save the file to the server's filesystem in a directory specific to the user
+        base_dir = Path(__file__).resolve().parent
+        upload_dir = base_dir / f"static/uploads/users/{user_id}"
+        upload_dir.mkdir(parents=True, exist_ok=True)
+
+        # Save the file to disk
+        file_path = upload_dir / safe_filename
+        file_path.write_bytes(file_bytes)
+
+        # Construct the URL to access the uploaded image
+        # This will be stored in the database for the user and returned to the client
+        image_url = f"/static/uploads/users/{user_id}/{safe_filename}"
+
+        response_body = save_uploaded_profile_image(
+            int(user_id),
+            image_url,
+            original_filename,
+            mime_type,
+        )
+
+        parsed = json.loads(response_body)
+        if "error" in parsed:
+            return self.response(
+                response_body,
+                status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value,
+            )
+
+        return self.response(response_body, status.HTTP_201_SUCCESS_CREATED.value)
+
+    def serve_static_file(self, url_path: str) -> bool:
+        """
+        Serve files from the /static directory.
+        Blocks directory traversal and only serves files within the static folder.
+        Returns True if it handled the request, otherwise False.
+        """
+
+        # Only handle /static/* paths
+        if not url_path.startswith("/static/"):
+            return False
+
+        # Decode URL-encoded characters (spaces, etc.)
+        url_path = unquote(url_path)
+
+        # Remove query string if any (shouldn't happen here but safe)
+        url_path = url_path.split("?")[0]
+
+        # Build absolute path to your server project's static folder.
+        # This assumes a folder named "static" exists in the same directory as this server file.
+        base_dir = Path(__file__).resolve().parent
+        static_root = base_dir / "static"
+
+        # Convert /static/avatars/cat.png -> static_root/avatars/cat.png
+        relative_path = url_path[len("/static/") :]  # "avatars/cat.png"
+        requested_file = (static_root / relative_path).resolve()
+
+        # Security: block directory traversal (../../etc/passwd)
+        try:
+            requested_file.relative_to(static_root.resolve())
+        except ValueError:
+            self.send_response(status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value)
+            self.end_headers()
+            return True
+
+        if not requested_file.exists() or not requested_file.is_file():
+            self.send_response(status.HTTP_404_CLIENT_ERROR_RESOURCE_NOT_FOUND.value)
+            self.end_headers()
+            return True
+
+        # Guess content type (image/png, image/jpeg, etc.)
+        content_type, _ = mimetypes.guess_type(str(requested_file))
+        if content_type is None:
+            content_type = "application/octet-stream"
+
+        file_bytes = requested_file.read_bytes()
+
+        self.send_response(status.HTTP_200_SUCCESS.value)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(file_bytes)))
+        self.end_headers()
+        self.wfile.write(file_bytes)
+
+        return True
+
+
+class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+    """Threaded server - no methods needed here, just the class declaration"""
+
+    pass
+
 
 #
 # THE CODE BELOW THIS LINE IS NOT IMPORTANT FOR REACHING YOUR LEARNING OBJECTIVES
@@ -445,7 +907,7 @@ def main():
     """Starts the server on port 8088"""
     host = ""
     port = 8088
-    HTTPServer((host, port), JSONServer).serve_forever()
+    ThreadedHTTPServer((host, port), JSONServer).serve_forever()
 
 
 if __name__ == "__main__":

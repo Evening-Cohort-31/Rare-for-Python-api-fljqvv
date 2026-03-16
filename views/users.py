@@ -115,7 +115,7 @@ def create_user(user):
             """
         Insert into Users 
         (first_name, last_name, username, email, password, bio, created_on, active, is_staff) 
-        values (?, ?, ?, ?, ?, ?, ?, 1, 0)
+        values (?, ?, ?, ?, ?, ?, ?, 1, ?)
         """,
             (
                 user["first_name"],
@@ -125,12 +125,13 @@ def create_user(user):
                 user["password"],
                 user["bio"],
                 datetime.now(),
+                1 if user.get("is_staff", False) else 0,
             ),
         )
 
-        id = db_cursor.lastrowid
+        new_user_id = db_cursor.lastrowid
 
-        return json.dumps({"token": id, "valid": True})
+        return json.dumps({"token": new_user_id, "valid": True})
 
 
 def update_user(user_id, updated_user):
@@ -147,10 +148,28 @@ def update_user(user_id, updated_user):
         conn.row_factory = sqlite3.Row
         db_cursor = conn.cursor()
 
+        # Guard against removing the last admin (via demotion or deactivation)
+        requesting_demotion = not updated_user.get("is_staff", False)
+        requesting_deactivation = not updated_user.get("active", True)
+        if requesting_demotion or requesting_deactivation:
+            db_cursor.execute("SELECT is_staff FROM Users WHERE id = ?", (user_id,))
+            current_user = db_cursor.fetchone()
+            if current_user and current_user["is_staff"]:
+                db_cursor.execute(
+                    "SELECT COUNT(*) as admin_count FROM Users WHERE is_staff = 1"
+                )
+                if db_cursor.fetchone()["admin_count"] <= 1:
+                    if requesting_demotion:
+                        return json.dumps({"error": "Cannot remove the last admin."})
+                    if requesting_deactivation:
+                        return json.dumps(
+                            {"error": "Cannot deactivate the last admin."}
+                        )
+
         db_cursor.execute(
             """
             UPDATE Users
-            SET 
+            SET
                 first_name = ?, 
                 last_name = ?, 
                 username = ?, 

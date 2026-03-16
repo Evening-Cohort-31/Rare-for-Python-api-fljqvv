@@ -78,6 +78,7 @@ def create_comment(comment_data):
 
     return json.dumps(created_comment)
 
+
 def get_comment_by_id(comment_id, query_params):
     """Get a single comment by its ID"""
 
@@ -109,6 +110,7 @@ def get_comment_by_id(comment_id, query_params):
 
     return json.dumps(comment)
 
+
 def update_comment(comment_id, updated_data):
     """Update an existing comment in the database"""
 
@@ -131,13 +133,34 @@ def update_comment(comment_id, updated_data):
             )
 
         if db_cursor.rowcount == 0:
-                   
+
             return json.dumps({"error": "Comment not found."})
 
         return json.dumps({"message": "Comment updated successfully."})
 
-    except sqlite3.Error as e:      
+    except sqlite3.Error as e:
         return json.dumps({"error": str(e)})
 
 
-   
+def delete_comment(comment_id):
+    """Delete a comment by id"""
+    # Added try/except block to catch any potential database errors and return them as JSON error messages
+    try:
+        with sqlite3.connect("./db.sqlite3") as conn:
+            db_cursor = conn.cursor()
+
+            db_cursor.execute(
+                """
+                DELETE FROM Comments
+                WHERE id = ?
+                """,
+                (comment_id,),
+            )
+
+            if db_cursor.rowcount == 0:
+                return json.dumps({"error": "Comment not found"})
+
+        return json.dumps({"message": "Comment deleted successfully"})
+
+    except sqlite3.Error as e:
+        return json.dumps({"error": str(e)})

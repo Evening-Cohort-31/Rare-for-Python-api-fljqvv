@@ -30,12 +30,17 @@ def get_all_posts(query_params):
                     p.approved,
                     u.first_name || ' ' || u.last_name AS author,
                     c.id AS cat_id,
-                    c.label AS cat_label
+                    c.label AS cat_label,
+                    GROUP_CONCAT(t.id) AS tag_ids,
+                    GROUP_CONCAT(t.label) AS tag_labels
                 FROM Posts p
                 JOIN Users u ON p.user_id = u.id
                 LEFT JOIN Categories c ON p.category_id = c.id
+                LEFT JOIN PostTags pt ON p.id = pt.post_id
+                LEFT JOIN Tags t ON pt.tag_id = t.id
                 WHERE p.approved = 1
                 AND p.publication_date <= datetime('now')
+                GROUP BY p.id
                 ORDER BY p.publication_date DESC
             """
             )
@@ -51,11 +56,16 @@ def get_all_posts(query_params):
                     p.image_url,
                     p.content,
                     p.approved,
-                    u.first_name || ' ' || u.last_name AS author
+                    u.first_name || ' ' || u.last_name AS author,
+                    GROUP_CONCAT(t.id) AS tag_ids,
+                    GROUP_CONCAT(t.label) AS tag_labels
                 FROM Posts p
                 JOIN Users u ON p.user_id = u.id
+                LEFT JOIN PostTags pt ON p.id = pt.post_id
+                LEFT JOIN Tags t ON pt.tag_id = t.id
                 WHERE p.approved = 1
                 AND p.publication_date <= datetime('now')
+                GROUP BY p.id
                 ORDER BY p.publication_date DESC
             """
             )
@@ -64,6 +74,12 @@ def get_all_posts(query_params):
         dataset = db_cursor.fetchall()
 
         for row in dataset:
+            tag_ids = row["tag_ids"].split(",") if row["tag_ids"] else []
+            tag_labels = row["tag_labels"].split(",") if row["tag_labels"] else []
+            tags = [
+                {"id": int(tid), "label": label}
+                for tid, label in zip(tag_ids, tag_labels)
+            ]
             post = {
                 "id": row["id"],
                 "user_id": row["user_id"],
@@ -72,8 +88,9 @@ def get_all_posts(query_params):
                 "publication_date": row["publication_date"],
                 "image_url": row["image_url"],
                 "content": row["content"],
-                "approved": row["approved"],
+                "approved": bool(row["approved"]),
                 "author": row["author"],
+                "tags": tags,
             }
 
             if "category" in expand:
@@ -185,7 +202,7 @@ def get_posts_by_user_id(user_id, query_params):
                 "publication_date": row["publication_date"],
                 "image_url": row["image_url"],
                 "content": row["content"],
-                "approved": row["approved"],
+                "approved": bool(row["approved"]),
                 "author": row["author"],
             }
 
@@ -215,7 +232,7 @@ def create_post(post):
         db_cursor.execute(
             """
             INSERT INTO Posts (user_id, category_id, title, publication_date, image_url, content, approved)
-            VALUES (?, ?, ?, ?, ?, ?, 1)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
             (
                 post["user_id"],
@@ -224,6 +241,7 @@ def create_post(post):
                 datetime.now().isoformat(),
                 post["image_url"],
                 post["content"],
+                bool(post["approved"]),
             ),
         )
 
@@ -260,7 +278,7 @@ def update_post(post_id, post_data):
                     post_data["publication_date"],
                     post_data["image_url"],
                     post_data["content"],
-                    post_data["approved"],
+                    bool(post_data["approved"]),
                     post_id,
                 ),
             )
