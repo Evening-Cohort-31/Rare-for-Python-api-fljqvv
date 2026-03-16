@@ -30,12 +30,17 @@ def get_all_posts(query_params):
                     p.approved,
                     u.first_name || ' ' || u.last_name AS author,
                     c.id AS cat_id,
-                    c.label AS cat_label
+                    c.label AS cat_label,
+                    GROUP_CONCAT(t.id) AS tag_ids,
+                    GROUP_CONCAT(t.label) AS tag_labels
                 FROM Posts p
                 JOIN Users u ON p.user_id = u.id
                 LEFT JOIN Categories c ON p.category_id = c.id
+                LEFT JOIN PostTags pt ON p.id = pt.post_id
+                LEFT JOIN Tags t ON pt.tag_id = t.id
                 WHERE p.approved = 1
                 AND p.publication_date <= datetime('now')
+                GROUP BY p.id
                 ORDER BY p.publication_date DESC
             """
             )
@@ -51,11 +56,16 @@ def get_all_posts(query_params):
                     p.image_url,
                     p.content,
                     p.approved,
-                    u.first_name || ' ' || u.last_name AS author
+                    u.first_name || ' ' || u.last_name AS author,
+                    GROUP_CONCAT(t.id) AS tag_ids,
+                    GROUP_CONCAT(t.label) AS tag_labels
                 FROM Posts p
                 JOIN Users u ON p.user_id = u.id
+                LEFT JOIN PostTags pt ON p.id = pt.post_id
+                LEFT JOIN Tags t ON pt.tag_id = t.id
                 WHERE p.approved = 1
                 AND p.publication_date <= datetime('now')
+                GROUP BY p.id
                 ORDER BY p.publication_date DESC
             """
             )
@@ -64,6 +74,12 @@ def get_all_posts(query_params):
         dataset = db_cursor.fetchall()
 
         for row in dataset:
+            tag_ids = row["tag_ids"].split(",") if row["tag_ids"] else []
+            tag_labels = row["tag_labels"].split(",") if row["tag_labels"] else []
+            tags = [
+                {"id": int(tid), "label": label}
+                for tid, label in zip(tag_ids, tag_labels)
+            ]
             post = {
                 "id": row["id"],
                 "user_id": row["user_id"],
@@ -74,6 +90,7 @@ def get_all_posts(query_params):
                 "content": row["content"],
                 "approved": row["approved"],
                 "author": row["author"],
+                "tags": tags,
             }
 
             if "category" in expand:
