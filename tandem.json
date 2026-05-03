@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "config": {
+    "understandingChecks": true
+  },
+  "docs": [
+    {
+      "path": "readme.md",
+      "scope": "general",
+      "purpose": "Project overview and getting started guide for the Rare server, including prerequisites, setup steps for pipenv and SQLite, and contributor list.",
+      "tags": ["setup", "onboarding", "project-overview"]
+    },
+    {
+      "path": "pull_request_template.md",
+      "scope": "general",
+      "purpose": "Pull request template with sections for description, change type checklist, testing steps, and technical notes for reviewers.",
+      "tags": ["conventions", "contributing", "workflow"]
+    },
+    {
+      "path": "dev-docs/PRD.md",
+      "scope": "general",
+      "purpose": "Product requirements, target users, tech stack decisions, project scope, success criteria, and learning goals for the Rare backend API.",
+      "tags": ["prd", "requirements", "scope", "stack"]
+    },
+    {
+      "path": "dev-docs/ARCHITECTURE.md",
+      "scope": "general",
+      "purpose": "System design, codebase map, request lifecycle, component breakdown, full data model with ERD, API endpoint reference, and project conventions.",
+      "tags": ["architecture", "system-design", "conventions", "data-model"]
+    }
+  ]
+}
