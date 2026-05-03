@@ -47,6 +47,8 @@ CREATE TABLE "Comments" (
   "post_id" INTEGER,
   "author_id" INTEGER,
   "content" varchar,
+  "subject" varchar,
+  "created_on" datetime,
   FOREIGN KEY(`post_id`) REFERENCES `Posts`(`id`),
   FOREIGN KEY(`author_id`) REFERENCES `Users`(`id`)
 );
@@ -86,5 +88,176 @@ CREATE TABLE "Categories" (
 );
 
 INSERT INTO Categories ('label') VALUES ('News');
-INSERT INTO Tags ('label') VALUES ('JavaScript');
 INSERT INTO Reactions ('label', 'image_url') VALUES ('happy', 'https://pngtree.com/so/happy');
+
+INSERT INTO "Posts" ("user_id", "category_id", "title", "publication_date", "image_url", "content", "approved")
+VALUES
+    (1, 1, 'Local Library Launches Free Digital Archive', '2026-01-15', 'https://picsum.photos/400/200', 'The downtown library announced today that it will be digitizing its entire historical collection and making it available online for free. The project, expected to take two years, will include newspapers dating back to the 1800s, rare photographs, and community records.', 1),
+    (1, 1, 'Community Garden Breaks Record Harvest', '2026-01-22', 'https://picsum.photos/400/200', 'Volunteers at the Elm Street Community Garden celebrated their most productive season yet, donating over 3,000 pounds of fresh produce to local food banks. Organizers credit the mild fall weather and a surge in new volunteers for the bumper crop.', 1),
+    (1, 1, 'City Council Approves New Bike Lane Network', '2026-02-03', 'https://picsum.photos/400/200', 'After months of public input, the city council voted 5-2 to approve a new network of protected bike lanes connecting major neighborhoods to the downtown district. Construction is set to begin this spring with an expected completion date in late summer.', 1);
+INSERT INTO "Posts" ("user_id", "category_id", "title", "publication_date", "image_url", "content", "approved")
+VALUES
+    (2, 1, 'New Food Truck Park Opens on East Side', '2026-02-08', 'https://picsum.photos/400/200', 'A new food truck park featuring 12 rotating vendors opened this weekend on the east side of town. The park includes covered seating for 200 people, live music on weekends, and a dedicated play area for children. Local food entrepreneurs are already signing up for vendor spots.', 1),
+    (1, 1, 'Proposed Downtown Development Sparks Community Debate', '2026-02-10', 'https://picsum.photos/400/201', 'A controversial proposal to build a mixed-use development in the heart of downtown has divided community members. Supporters argue it will bring jobs and revitalize aging infrastructure, while opponents worry about increased traffic and the loss of historic character. City council will vote on the proposal next month.', 0),
+    (2, 1, 'Local High School Robotics Team Advances to State Championship', '2026-02-16', 'https://picsum.photos/400/202', 'The robotics team from Central High School secured first place at the regional competition last weekend, earning them a spot at the state championship in March. The team spent six months designing and building their robot, which excelled in both autonomous and driver-controlled challenges.', 1);
+INSERT INTO Categories (label) VALUES ('Sports');
+INSERT INTO Categories (label) VALUES ('Tech');
+
+-- Sample post to be deleted
+INSERT INTO "Posts" ("user_id", "category_id", "title", "publication_date", "image_url", "content", "approved")
+VALUES
+    (1, 1, 'New Post I made just to delete it', '2026-02-01', 'https://picsum.photos/400/200', 'This is just a test.', 1);
+
+-- Show All Posts
+SELECT * FROM Posts;
+
+-- Recreate Comments table with publication_date column
+ALTER TABLE Comments ADD COLUMN publication_date date DEFAULT (date('now'));
+
+-- Sample comments for Post_Id 1
+INSERT INTO Comments (post_id, author_id, content) VALUES (1, 2, 'Great post, really enjoyed reading this!');
+
+-- Sample comments for Post_Id 2
+INSERT INTO Comments (post_id, author_id, content) VALUES (2, 1, 'This is really helpful, thanks for sharing.');
+INSERT INTO Comments (post_id, author_id, content) VALUES (2, 3, 'Interesting perspective, I had not thought of it that way.');
+
+-- Sample comments for Post_Id 3
+INSERT INTO Comments (post_id, author_id, content) VALUES (3, 1, 'Totally agree with everything said here.');
+INSERT INTO Comments (post_id, author_id, content) VALUES (3, 2, 'Can you elaborate more on this topic?');
+INSERT INTO Comments (post_id, author_id, content) VALUES (3, 4, 'I had a similar experience, great write-up.');
+INSERT INTO Comments (post_id, author_id, content) VALUES (3, 3, 'Looking forward to more posts like this!');
+
+-- Create tags
+INSERT INTO Tags ('label') VALUES ('JavaScript');
+INSERT INTO Tags ('label') VALUES ('Python');
+INSERT INTO Tags ('label') VALUES ('SQL');
+INSERT INTO Tags ('label') VALUES ('Data Science');
+
+-- Add is_staff column to Users table, defaulting all existing users to false (0)
+ALTER TABLE "Users" ADD COLUMN "is_staff" bit NOT NULL DEFAULT 0;
+
+-- Set user id 1 as a staff member
+UPDATE "Users" SET "is_staff" = 1 WHERE "id" = 1;
+
+-- New non-staff user
+INSERT INTO "Users" ("first_name", "last_name", "email", "bio", "username", "password", "profile_image_url", "created_on", "active", "is_staff")
+VALUES ('Jason', 'Norman', 'jason.norman@example.com', 'Avid golfer and occasional blogger.', 'ZoomingInACar', 'password123', 'https://picsum.photos/200', '2026-02-20', 1, 0);
+
+-- New staff user
+INSERT INTO "Users" ("first_name", "last_name", "email", "bio", "username", "password", "profile_image_url", "created_on", "active", "is_staff")
+VALUES ('Lea', 'Edwards', 'lea.edwards@example.com', 'Site administrator, content moderator, and Soap officiant.', 'HealthyHabitsGirl', 'password123', 'https://picsum.photos/200', '2026-02-20', 1, 1);
+
+-- Add subject column to Comments table
+ALTER TABLE "Comments" ADD COLUMN "subject" varchar;
+
+-- Rename publication_date to created_on in Comments table for consistency with other tables
+ALTER TABLE Comments RENAME COLUMN publication_date TO created_on;
+
+-- Create unique index on PostReactions to prevent duplicate reactions from the same user on the same post
+CREATE UNIQUE INDEX IF NOT EXISTS idx_postreactions_user_post
+ON PostReactions (user_id, post_id);
+
+--TODO: run statements below for Ticket #38 - Refactor reactions to support Font Awesome icons and add color field 
+-- Since we are using SQLite, we have to use multiple ALTER TABLE statements to modify the Reactions table, as SQLite does not support multiple alterations in a single statement
+-- Refactor Reactions table: rename image_url to icon_class for Font Awesome support
+ALTER TABLE "Reactions" RENAME COLUMN "image_url" TO "icon_class";
+-- Add color to the reactions table
+ALTER TABLE "Reactions" ADD COLUMN "color" TEXT;
+
+-- Update existing 'happy' reaction to have a Font Awesome icon class and a color
+UPDATE "Reactions" SET "icon_class" = 'fas fa-laugh', "color" = '#ff3860' WHERE "label" = 'happy';
+
+-- Seed additional reactions
+INSERT INTO "Reactions" ("label", "icon_class", "color") VALUES ('heart', 'fas fa-heart', '#ff3860');
+INSERT INTO "Reactions" ("label", "icon_class", "color") VALUES ('like', 'fas fa-thumbs-up', '#3273dc');
+INSERT INTO "Reactions" ("label", "icon_class", "color") VALUES ('sad', 'fas fa-sad-tear', '#00d1b2');
+INSERT INTO "Reactions" ("label", "icon_class", "color") VALUES ('angry', 'fas fa-angry', '#ff3860');
+
+-- Seed PostReactions with sample data. Requires two users
+INSERT INTO "PostReactions" ("user_id", "reaction_id", "post_id") VALUES (1, 2, 1);
+INSERT INTO "PostReactions" ("user_id", "reaction_id", "post_id") VALUES (2, 3, 1);
+INSERT INTO "PostReactions" ("user_id", "reaction_id", "post_id") VALUES (1, 1, 2);
+--End of Statements for Ticket #38
+
+-- Create UserProfileImages table to store metadata about uploaded profile images
+CREATE TABLE UserProfileImages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  image_url TEXT NOT NULL,
+  original_filename TEXT,
+  mime_type TEXT,
+  created_on TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(user_id) REFERENCES Users(id)
+);
+-- Standardizing the DemotionQueue table by adding a status, created_on, and completed_on columns to track the status and timing of demotion actions more effectively. Also, we change the key "admin_id" to "initiator_id" to better reflect that this user is the one initiating the demotion, and "approver_one_id" to "approver_id" for clarity and consistency.
+-- This will allow for better management and querying of the demotion queue.
+DROP TABLE IF EXISTS "DemotionQueue";
+
+CREATE TABLE "DemotionQueue" (
+  "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+  "action" TEXT NOT NULL,
+  "target_admin_id" INTEGER NOT NULL,
+  "initiator_id" INTEGER NOT NULL,
+  "approver_id" INTEGER,
+  "status" TEXT NOT NULL DEFAULT 'pending',
+  "created_on" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "completed_on" TEXT,
+  FOREIGN KEY("target_admin_id") REFERENCES "Users"("id"),
+  FOREIGN KEY("initiator_id") REFERENCES "Users"("id"),
+  FOREIGN KEY("approver_id") REFERENCES "Users"("id")
+);
+
+-- Area for resetting Users table and seeding new users for testing demotion queue functionality
+DROP TABLE IF EXISTS "Users";
+
+CREATE TABLE "Users" (
+  "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+  "first_name" varchar,
+  "last_name" varchar,
+  "email" varchar,
+  "bio" varchar,
+  "username" varchar,
+  "password" varchar,
+  "profile_image_url" varchar,
+  "created_on" date,
+  "active" bit,
+  "is_staff" bit NOT NULL DEFAULT 0
+);
+
+INSERT INTO "Users" ("first_name", "last_name", "email", "bio", "username", "password", "profile_image_url", "created_on", "active", "is_staff")
+VALUES ('Dale', 'Hobbs', 'dale.hobbs@example.com', 'Administrator and community manager.', 'ssj4mathgenius', 'password123', 'https://picsum.photos/200', '2026-03-10', 1, 1);
+
+INSERT INTO "Users" ("first_name", "last_name", "email", "bio", "username", "password", "profile_image_url", "created_on", "active", "is_staff")
+VALUES ('Val', 'Freeman', 'val.freeman@example.com', 'Passionate writer and platform advocate.', 'ValF', 'password123', 'https://picsum.photos/200', '2026-03-10', 1, 0);
+
+INSERT INTO "DemotionQueue" ("action", "target_admin_id", "initiator_id", "approver_id", "status") VALUES ('demote', 1, 2, NULL, 'pending');
+
+INSERT INTO "Users" ("first_name", "last_name", "email", "bio", "username", "password", "profile_image_url", "created_on", "active", "is_staff")
+VALUES ('Erin', 'Telfer', 'erin.telfer@example.com', 'Tech enthusiast and community builder.', 'PinballStar', 'password123', 'https://picsum.photos/200', '2026-03-10', 1, 1);
+
+-- Area for resetting PostTags table and seeding new data for testing post-tag relationships and deletion functionality
+DROP TABLE IF EXISTS "PostTags";
+
+CREATE TABLE "PostTags" (
+  "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+  "post_id" INTEGER NOT NULL,
+  "tag_id" INTEGER NOT NULL,
+  "created_on" TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(`post_id`) REFERENCES `Posts`(`id`),
+  FOREIGN KEY(`tag_id`) REFERENCES `Tags`(`id`),
+  UNIQUE(post_id, tag_id)
+);
+
+-- Create indexes on post_id and tag_id in PostTags table to optimize queries filtering by these columns, 
+-- which is common when retrieving tags for a post or posts for a tag
+CREATE INDEX idx_posttags_post_id ON PostTags(post_id);
+CREATE INDEX idx_posttags_tag_id ON PostTags(tag_id);
+
+-- Seed PostTags with sample data
+-- Post 1 tagged with 'JavaScript' and 'SQL', Post 2 tagged with 'JavaScript', Post 3 tagged with 'Data Science', Post 4 tagged with 'JavaScript'
+INSERT INTO "PostTags" ("post_id", "tag_id") VALUES (1, 1);
+INSERT INTO "PostTags" ("post_id", "tag_id") VALUES (1, 2);
+INSERT INTO "PostTags" ("post_id", "tag_id") VALUES (2, 1);
+INSERT INTO "PostTags" ("post_id", "tag_id") VALUES (3, 3);
+INSERT INTO "PostTags" ("post_id", "tag_id") VALUES (4, 1);
+UPDATE users SET is_staff = 0 WHERE id = 3;
